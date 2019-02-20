@@ -1,0 +1,25 @@
+# Build and temp files --------------------------
+/build/
+/temp/
+temp
+temp.*
+*.csv
+/target/
+/project/
+
+# Binaries --------------------------------------
+/bin/
+/dist/
+
+# Editor files ----------------------------------
+### VS Code ###
+/.vscode/
+
+### Jetbrains ###
+.idea
+*.iml
+dependency-reduced-pom.xml
+
+### Bitpocket ###
+/.bitpocket/
+.bitignore
