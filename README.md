@@ -2,12 +2,12 @@
 Implement a **BigData (batch and stream) processing engine** using Akka actors. The engine accepts programs that define an arbitrary acyclic graph of operators. Operators take in input <Key, Value> pairs where both the Key and the Value are strings.
 
 Implement the following operators:
-Map: takes in input a <Key, Value> pair and produces a <Key, Value> pair, according to a user-defined function.
-FlatMap: takes in input a <Key, Value> pair and produces a set of <Key, Value> pairs, according to a user-defined function.
-Filter: takes in input a <Key, Value> pair and either propagates it downstream or drops it, according to a user-defined predicate.
-Aggregate: accumulates n <Key, Value> pairs and produces a single <Key, Value> pair, according to a user-defined aggregate function.
-Split: forwards the incoming <Key, Value> pairs to multiple downstream operators.
-Merge: accepts <Key, Value> pairs from multiple operators and forwards them to the downstream operator.
+- **Map**: takes in input a <Key, Value> pair and produces a <Key, Value> pair, according to a user-defined function.
+- **FlatMap**: takes in input a <Key, Value> pair and produces a set of <Key, Value> pairs, according to a user-defined function.
+- **Filter**: takes in input a <Key, Value> pair and either propagates it downstream or drops it, according to a user-defined predicate.
+- **Aggregate**: accumulates n <Key, Value> pairs and produces a single <Key, Value> pair, according to a user-defined aggregate function.
+- **Split**: forwards the incoming <Key, Value> pairs to multiple downstream operators.
+- **Merge**: accepts <Key, Value> pairs from multiple operators and forwards them to the downstream operator.
 The framework takes care of instantiating multiple workers (actors) to perform each operator in parallel on different data partitions (each worker is assigned a subset of the keys), and it handles the communication between operators.
 
 Input data is made available by a single source node and output data is consumed by a single sink node. You can either assume that operators are instantiated for the entire duration of the computation, or that they are dynamically scheduled.
