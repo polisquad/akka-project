@@ -8,6 +8,7 @@ Implement the following operators:
 - **Aggregate**: accumulates n <Key, Value> pairs and produces a single <Key, Value> pair, according to a user-defined aggregate function.
 - **Split**: forwards the incoming <Key, Value> pairs to multiple downstream operators.
 - **Merge**: accepts <Key, Value> pairs from multiple operators and forwards them to the downstream operator.
+
 The framework takes care of instantiating multiple workers (actors) to perform each operator in parallel on different data partitions (each worker is assigned a subset of the keys), and it handles the communication between operators.
 
 Input data is made available by a single source node and output data is consumed by a single sink node. You can either assume that operators are instantiated for the entire duration of the computation, or that they are dynamically scheduled.
