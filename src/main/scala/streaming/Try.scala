@@ -6,11 +6,9 @@ object Try {
 
   def main(args: Array[String]): Unit = {
     val system = ActorSystem("prova")
-
-    val masterNode = system.actorOf(MasterNode.props)
+    val masterNode = system.actorOf(MasterNode.props, "JobMaster")
 
     masterNode ! MasterNode.CreateTopology
-
   }
 
 }
