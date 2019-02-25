@@ -2,7 +2,7 @@ package streaming
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MapOperator.Tuple
-import streaming.MasterNode.JobStarted
+import streaming.MasterNode.{JobRestarted, JobStarted}
 import streaming.Streaming._
 
 import scala.concurrent.Future
@@ -10,7 +10,6 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 // TODO refactor to generalize
-// TODO add different kind of sources(just replayable)
 class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
   import Source._
   import context.dispatcher
@@ -21,12 +20,23 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
     ("c", "ciao"),
     ("z", "zeus")
   )
-  var offset: Long = 0 // TODO
+  var offset: Long = 0 // TODO write to file when snapshotting(simulating kafka offset, if restart from scratch read it)
 
   var downOffsets: Map[ActorRef, Long] = _
   var takingSnapshot = false
 
   var markersToAck: Int = _
+  var uuidToAck: String = _
+
+
+  def snapshot(): Unit =
+    // TODO
+    log.info("Snapshotting...")
+
+  def restoreSnapshot(uuid: String): Unit =
+    // TODO
+    log.info(s"Restoring snapshot ${uuid}...")
+
 
   override def receive: Receive = {
     case InitializeSource =>
@@ -40,29 +50,43 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
         case Failure(_) => self ! SnapshotFailed
       }
 
+    case RestoreSnapshot(uuid) =>
+      Future {
+        restoreSnapshot(uuid)
+      } onComplete {
+        case Success(_) => self ! InitializedFromSnapshot(uuid)
+        case Failure(_) => self ! RestoreSnapshotFailed
+      }
+
     case Initialized =>
       context.parent ! MasterNode.InitializedAck
       context.become(operative)
 
     case SnapshotFailed =>
-      throw InitializeException("Initial snapshot failed")
+      throw new Exception("Initial snapshot failed")
+
+    case InitializedFromSnapshot(uuid) =>
+      context.parent ! InitializedFromSnapshot(uuid)
+      context.become(operative)
+
+    case RestoreSnapshotFailed =>
+      throw new Exception("Restore snapshot failed")
   }
-
-  def snapshot(): Unit =
-    // TODO
-    log.info("Snapshotting...")
-
 
   def operative: Receive = {
     case StartJob =>
       self ! Produce
       sender() ! JobStarted
 
+    case RestartJob =>
+      self ! Produce
+      sender() ! JobRestarted
+
     case Produce =>
       if (takingSnapshot) {
         stash()
       } else {
-        if (data != Nil) {
+        if (data != Nil) { // TODO change this
           val downStreamOp = downStreams(data.head._1.hashCode() % downStreams.size)
           val newOffset = downOffsets(downStreamOp)
 
@@ -96,18 +120,24 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
         downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
       }
       markersToAck = downStreams.length
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds)
+      uuidToAck = uuid
+      timers.startSingleTimer(MarkersLostTimer, MarkersLost, 2 seconds)
 
     case MarkersLost =>
       throw new Exception("Markers have been lost")
 
-    case MarkerAck =>
-      markersToAck -= 1
-      if (markersToAck == 0) {
-        log.info("Correctly received marker acks from all the downstream operators")
-        timers.cancel("MarkersLostTimer")
-        takingSnapshot = false
-        unstashAll()
+    case MarkerAck(uuid) =>
+      if (uuid == uuidToAck) {
+        log.info(s"Received marker ack for ${uuid}")
+        markersToAck -= 1
+        if (markersToAck == 0) {
+          log.info("Correctly received marker acks from all the downstream operators")
+          timers.cancel(MarkersLostTimer)
+          takingSnapshot = false
+          unstashAll()
+        }
+      } else {
+        log.info(s"Received unexpected marker ack for ${uuid}")
       }
 
     case SnapshotFailed =>
@@ -118,9 +148,11 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
 }
 
 object Source {
+  val MarkersLostTimer = "MarkersLost"
   def props(downStreams: Vector[ActorRef]): Props = Props(new Source(downStreams))
 
   case object Produce
   case object InitializeSource
   case object StartJob
+  case object RestartJob
 }

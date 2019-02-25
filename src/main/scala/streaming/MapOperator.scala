@@ -22,8 +22,17 @@ class MapOperator(
   var numBlocked: Int = 0
 
   var markersToAck: Int = _
+  var uuidToAck: String = _
 
-  // TODO remember to deal with restart
+
+  def snapshot(): Unit =
+    // TODO
+    log.info("Snapshotting...")
+
+  def restoreSnapshot(uuid: String): Unit =
+    // TODO
+    log.info(s"Restoring snapshot ${uuid}...")
+
   override def receive: Receive = {
     case Initializer(upStreams) =>
       upOffsets = upStreams.map(x => x -> 0L).toMap
@@ -38,23 +47,27 @@ class MapOperator(
         case Failure(_) => self ! SnapshotFailed
       }
 
+    case RestoreSnapshot(uuid) =>
+      Future {
+        restoreSnapshot(uuid)
+      } onComplete {
+        case Success(_) => self ! InitializedFromSnapshot(uuid)
+        case Failure(_) => self ! RestoreSnapshotFailed
+      }
+
     case Initialized =>
       context.parent ! MasterNode.InitializedAck
       context.become(operative)
 
     case SnapshotFailed =>
-      throw InitializeException("Initial snapshot failed")
-  }
+      throw new Exception("Initial snapshot failed")
 
+    case InitializedFromSnapshot(uuid) =>
+      context.parent ! InitializedFromSnapshot(uuid)
+      context.become(operative)
 
-  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
-    super.preRestart(reason, message)
-    log.info("Restarting")
-  }
-
-  def snapshot(): Unit = {
-    // TODO
-    log.info("Snapshotting...")
+    case RestoreSnapshotFailed =>
+      throw new Exception("Restore snapshot failed")
   }
 
   def operative: Receive = {
@@ -96,7 +109,7 @@ class MapOperator(
           self ! TakeSnapshot(uuid)
         }
 
-        sender() ! MarkerAck
+        sender() ! MarkerAck(uuid)
         upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
 
       } else {
@@ -118,6 +131,7 @@ class MapOperator(
         downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
       }
       markersToAck = downStreams.size
+      uuidToAck = uuid
       timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds)
 
     case MarkersLost =>
@@ -126,14 +140,19 @@ class MapOperator(
     case SnapshotFailed =>
       throw new Exception("Snapshot failed")
 
-    case MarkerAck =>
-      markersToAck -= 1
-      if (markersToAck == 0) {
-        log.info("Correctly received marker acks from all the downstream operators")
-        timers.cancel("MarkersLostTimer")
-        blockedChannels = blockedChannels.map {case (k, _) => k -> false}
-        numBlocked = 0
-        unstashAll()
+    case MarkerAck(uuid) =>
+      if (uuid == uuidToAck) {
+        log.info(s"Received marker ack for ${uuid}")
+        markersToAck -= 1
+        if (markersToAck == 0) {
+          log.info("Correctly received marker acks from all the downstream operators")
+          timers.cancel("MarkersLostTimer")
+          blockedChannels = blockedChannels.map { case (k, _) => k -> false }
+          numBlocked = 0
+          unstashAll()
+        }
+      } else {
+        log.info(s"Received unexpected marker ack for ${uuid}")
       }
   }
 

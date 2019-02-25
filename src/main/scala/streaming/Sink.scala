@@ -18,7 +18,15 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
   var blockedChannels: Map[ActorRef, Boolean] = _
   var numBlocked: Int = 0
 
-  var filePointer: Long = 0
+  var filePointer: Long = 0 // TODO write to file like source, if restart from zero read it
+
+  def snapshot(): Unit =
+    // TODO
+    log.info("Snapshotting...")
+
+  def restoreSnapshot(uuid: String): Unit =
+    // TODO
+    log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
     case Initializer(upStreams) =>
@@ -33,18 +41,29 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
         case Failure(_) => self ! SnapshotFailed
       }
 
+    case RestoreSnapshot(uuid) =>
+      Future {
+        restoreSnapshot(uuid)
+      } onComplete {
+        case Success(_) => self ! InitializedFromSnapshot(uuid)
+        case Failure(_) => self ! RestoreSnapshotFailed
+      }
+
     case Initialized =>
       context.parent ! MasterNode.InitializedAck
       context.become(operative)
 
     case SnapshotFailed =>
-      throw InitializeException("Initial snapshot failed")
+      throw new Exception("Initial snapshot failed")
+
+    case InitializedFromSnapshot(uuid) =>
+      context.parent ! InitializedFromSnapshot(uuid)
+      context.become(operative)
+
+    case RestoreSnapshotFailed =>
+      throw new Exception("Restore snapshot failed")
   }
 
-  def snapshot(): Unit = {
-    // TODO
-    log.info("Snapshotting...")
-  }
 
   def operative: Receive = {
     case t: MapOperator.Tuple =>
@@ -77,7 +96,7 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
       context.parent ! SnapshotDone(uuid)
       timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds)
 
-    case MarkerAck => // TODO change this message
+    case MarkerAck(_) => // TODO change this message? it is not really a marker ack
       timers.cancel("MarkersLostTimer")
       blockedChannels = blockedChannels.map {case (k, _) => k -> false}
       numBlocked = 0
@@ -87,7 +106,7 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
       log.info(s"Received marker ${marker}")
       val expectedOffset = upOffsets(sender())
 
-      if (marker.offset == expectedOffset) {
+      if (offset == expectedOffset) {
         blockedChannels = blockedChannels.updated(sender(), true)
         numBlocked += 1
 
@@ -95,7 +114,7 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
           self ! TakeSnapshot(uuid)
         }
 
-        sender() ! MarkerAck
+        sender() ! MarkerAck(uuid)
         upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
 
       } else {
