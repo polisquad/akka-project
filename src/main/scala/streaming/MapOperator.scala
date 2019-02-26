@@ -24,6 +24,11 @@ class MapOperator(
   var markersToAck: Int = _
   var uuidToAck: String = _
 
+  def init(upStreams: Vector[ActorRef]): Unit = {
+    upOffsets = upStreams.map(x => x -> 0L).toMap
+    downOffsets = downStreams.map(x => x -> 0L).toMap
+    blockedChannels = upStreams.map(x => x -> false).toMap
+  }
 
   def snapshot(): Unit =
     // TODO
@@ -35,9 +40,7 @@ class MapOperator(
 
   override def receive: Receive = {
     case Initializer(upStreams) =>
-      upOffsets = upStreams.map(x => x -> 0L).toMap
-      downOffsets = downStreams.map(x => x -> 0L).toMap
-      blockedChannels = upStreams.map(x => x -> false).toMap
+      init(upStreams)
 
       Future {
         // Initial starting snapshot
@@ -47,11 +50,13 @@ class MapOperator(
         case Failure(_) => self ! SnapshotFailed
       }
 
-    case RestoreSnapshot(uuid) =>
+    case RestoreSnapshot(uuid, upStreams) =>
+      init(upStreams)
+
       Future {
         restoreSnapshot(uuid)
       } onComplete {
-        case Success(_) => self ! InitializedFromSnapshot(uuid)
+        case Success(_) => self ! RestoredSnapshot(uuid)
         case Failure(_) => self ! RestoreSnapshotFailed
       }
 
@@ -62,8 +67,8 @@ class MapOperator(
     case SnapshotFailed =>
       throw new Exception("Initial snapshot failed")
 
-    case InitializedFromSnapshot(uuid) =>
-      context.parent ! InitializedFromSnapshot(uuid)
+    case RestoredSnapshot(uuid) =>
+      context.parent ! RestoredSnapshot(uuid)
       context.become(operative)
 
     case RestoreSnapshotFailed =>

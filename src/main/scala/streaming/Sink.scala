@@ -28,10 +28,14 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
     // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
+  def init(upStreams: Vector[ActorRef]): Unit = {
+    upOffsets = upStreams.map(x => x -> 0L).toMap
+    blockedChannels = upStreams.map(x => x -> false).toMap
+  }
+
   override def receive: Receive = {
     case Initializer(upStreams) =>
-      upOffsets = upStreams.map(x => x -> 0L).toMap
-      blockedChannels = upStreams.map(x => x -> false).toMap
+      init(upStreams)
 
       Future {
         // Initial starting snapshot
@@ -41,11 +45,13 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
         case Failure(_) => self ! SnapshotFailed
       }
 
-    case RestoreSnapshot(uuid) =>
+    case RestoreSnapshot(uuid, upStreams) =>
+      init(upStreams)
+
       Future {
         restoreSnapshot(uuid)
       } onComplete {
-        case Success(_) => self ! InitializedFromSnapshot(uuid)
+        case Success(_) => self ! RestoredSnapshot(uuid)
         case Failure(_) => self ! RestoreSnapshotFailed
       }
 
@@ -56,8 +62,8 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
     case SnapshotFailed =>
       throw new Exception("Initial snapshot failed")
 
-    case InitializedFromSnapshot(uuid) =>
-      context.parent ! InitializedFromSnapshot(uuid)
+    case RestoredSnapshot(uuid) =>
+      context.parent ! RestoredSnapshot(uuid)
       context.become(operative)
 
     case RestoreSnapshotFailed =>

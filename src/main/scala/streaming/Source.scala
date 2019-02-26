@@ -37,10 +37,14 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
     // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
+  def init(): Unit = {
+    downOffsets = downStreams.map(x => x -> 0L).toMap
+  }
+
 
   override def receive: Receive = {
     case InitializeSource =>
-      downOffsets = downStreams.map(x => x -> 0L).toMap
+      init()
 
       Future {
         // Initial starting snapshot
@@ -50,11 +54,13 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
         case Failure(_) => self ! SnapshotFailed
       }
 
-    case RestoreSnapshot(uuid) =>
+    case RestoreSnapshot(uuid, _) =>
+      init()
+
       Future {
         restoreSnapshot(uuid)
       } onComplete {
-        case Success(_) => self ! InitializedFromSnapshot(uuid)
+        case Success(_) => self ! RestoredSnapshot(uuid)
         case Failure(_) => self ! RestoreSnapshotFailed
       }
 
@@ -65,8 +71,8 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
     case SnapshotFailed =>
       throw new Exception("Initial snapshot failed")
 
-    case InitializedFromSnapshot(uuid) =>
-      context.parent ! InitializedFromSnapshot(uuid)
+    case RestoredSnapshot(uuid) =>
+      context.parent ! RestoredSnapshot(uuid)
       context.become(operative)
 
     case RestoreSnapshotFailed =>

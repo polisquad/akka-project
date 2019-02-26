@@ -16,7 +16,7 @@ class MasterNode extends Actor with ActorLogging with Timers {
   var toInitialize: Int = 0
   var toInitializeFromSnapshot: Int = 0
   var lastValidSnapshot: String = _
-  var restoreSnapshotTries = 5 // TODO
+  var snapshotToAck: String = _
 
   override def receive: Receive = {
 
@@ -47,12 +47,14 @@ class MasterNode extends Actor with ActorLogging with Timers {
       throw new Exception("Unable to start the Job")
   }
 
-  def snapshotRestorer(uuid: String): Receive = {
-    case InitializedFromSnapshot(`uuid`) =>
-      toInitializeFromSnapshot -= 1
-      if (toInitializeFromSnapshot == 0) {
-        context.children.foreach(context.watch)
-        context.child("Source").get ! RestartJob
+  def snapshotRestorer(uuidToRestore: String): Receive = {
+    case RestoredSnapshot(uuid) =>
+      if (uuid == uuidToRestore) {
+        toInitializeFromSnapshot -= 1
+        if (toInitializeFromSnapshot == 0) {
+          context.children.foreach(context.watch)
+          context.child("Source").get ! RestartJob
+        }
       }
 
     case JobRestarted =>
@@ -70,7 +72,10 @@ class MasterNode extends Actor with ActorLogging with Timers {
 
   def operative: Receive = {
     case Terminated(actor) =>
-      // requires: we enter here if a child has been stopped by this master node
+
+      // If we were taking a snapshot and something has failed just cancel the timer since we are going to
+      // restore the last snapshot
+      timers.cancel(SnapshotTimer)
       context.children.foreach(context.unwatch)
       self ! RestoreLastSnapshot
 
@@ -79,16 +84,23 @@ class MasterNode extends Actor with ActorLogging with Timers {
       context.become(snapshotRestorer(lastValidSnapshot))
 
     case SnapshotDone(uuid) =>
-      timers.cancel(SnapshotTimer)
-      sender() ! MarkerAck(uuid)
-      lastValidSnapshot = uuid
-      log.info(s"Performed snapshot with uuid: ${uuid}")
-      self ! SetSnapshot
+      if (uuid == snapshotToAck) {
+        timers.cancel(SnapshotTimer)
+
+        // Just to be coherent with the rest of the nodes in the graph which wait for ack regarding the markers
+        // If this ack does not arrive back to the Sink it will fail, but we have the snapshot saved so it's fine
+        sender() ! MarkerAck(uuid)
+        lastValidSnapshot = uuid
+        log.info(s"Performed snapshot with uuid: ${uuid}")
+        self ! SetSnapshot
+      }
 
     case SetSnapshot =>
       context.system.scheduler.scheduleOnce(5 seconds) {
-        context.child("Source").get ! Marker(randomUUID().toString, 0)
+        val newSnapshot = randomUUID().toString
+        context.child("Source").get ! Marker(newSnapshot, 0)
         timers.startSingleTimer(SnapshotTimer, RestoreLastSnapshot, 10 seconds)
+        snapshotToAck = newSnapshot
       }
   }
 
@@ -100,25 +112,28 @@ class MasterNode extends Actor with ActorLogging with Timers {
   // TODO generalize
   def restoreTopology(uuid: String): Unit = {
 
-    val initializerFromSnapshot = InitializerFromSnapshot(uuid)
     val sink = context.actorOf(Sink.props, "Sink")
 
     val map21 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map21")
     val map22 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map22")
 
-    sink ! initializerFromSnapshot
+    val sinkInitializer = RestoreSnapshot(uuid, Vector(map21, map22))
+    sink ! sinkInitializer
 
     val map11 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2.toLowerCase()), Vector(map21, map22)), "Map11")
     val map12 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2.toLowerCase()), Vector(map21, map22)), "Map12")
 
-    map21 ! initializerFromSnapshot
-    map22 ! initializerFromSnapshot
+    val map2Initializer = RestoreSnapshot(uuid, Vector(map11, map12))
+
+    map21 ! map2Initializer
+    map22 ! map2Initializer
 
     val source = context.actorOf(Source.props(Vector(map11, map12)), "Source")
-    source ! InitializeSource
+    source ! RestoreSnapshot(uuid, Vector()) // TODO change this to RestoreSource
 
-    map11 ! initializerFromSnapshot
-    map12 ! initializerFromSnapshot
+    val map1Initializer = RestoreSnapshot(uuid, Vector(source))
+    map11 ! map1Initializer
+    map12 ! map1Initializer
     toInitializeFromSnapshot = 6
 
     timers.startSingleTimer(RestoreSnapshotFailureTimer, RestoreSnapshotFailure, 10 seconds)

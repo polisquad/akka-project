@@ -9,11 +9,14 @@ object Streaming {
 
   case object Initialized
 
-  final case class InitializerFromSnapshot(uuid: String)
 
-  final case class InitializedFromSnapshot(uuid: String)
+  //final case class InitializerFromSnapshot(uuid: String, upStreams: Vector[ActorRef])
 
-  final case class RestoreSnapshot(uuid: String)
+  //final case class InitializedFromSnapshot(uuid: String)
+
+  final case class RestoreSnapshot(uuid: String, upStreams: Vector[ActorRef])
+
+  final case class RestoredSnapshot(uuid: String)
 
   final case class Marker(uuid: String, offset: Long)
 
