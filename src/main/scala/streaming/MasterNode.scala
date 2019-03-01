@@ -1,14 +1,16 @@
 package streaming
 
 import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorLogging, AllForOneStrategy, Props, SupervisorStrategy, Terminated, Timers}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Props, SupervisorStrategy, Terminated, Timers}
 import streaming.Source.{InitializeSource, RestartJob, StartJob}
 import streaming.Streaming._
 
 import scala.concurrent.duration._
 import java.util.UUID.randomUUID
 
+
 // TODO test everything
+// TODO test, test, test, test, test....
 class MasterNode extends Actor with ActorLogging with Timers {
   import MasterNode._
   import context.dispatcher
@@ -17,6 +19,7 @@ class MasterNode extends Actor with ActorLogging with Timers {
   var toInitializeFromSnapshot: Int = 0
   var lastValidSnapshot: String = _
   var snapshotToAck: String = _
+  var children: Children = _
 
   override def receive: Receive = {
 
@@ -26,8 +29,8 @@ class MasterNode extends Actor with ActorLogging with Timers {
     case InitializedAck =>
       toInitialize -= 1
       if (toInitialize == 0 ) {
-        context.children.foreach(context.watch)
-        context.child("Source").get ! StartJob
+        children.watchAll()
+        children.source ! StartJob
         // Note: if the source receives this message the graph is up and running
         // The source will send a JobStarted to ack the master the node has started processing
         // If something fails before receiving this message we abort(done in Terminated(actor))
@@ -52,8 +55,8 @@ class MasterNode extends Actor with ActorLogging with Timers {
       if (uuid == uuidToRestore) {
         toInitializeFromSnapshot -= 1
         if (toInitializeFromSnapshot == 0) {
-          context.children.foreach(context.watch)
-          context.child("Source").get ! RestartJob
+          children.watchAll()
+          children.source ! RestartJob
         }
       }
 
@@ -72,11 +75,10 @@ class MasterNode extends Actor with ActorLogging with Timers {
 
   def operative: Receive = {
     case Terminated(actor) =>
-
       // If we were taking a snapshot and something has failed just cancel the timer since we are going to
       // restore the last snapshot
       timers.cancel(SnapshotTimer)
-      context.children.foreach(context.unwatch)
+      children.unwatchAll()
       self ! RestoreLastSnapshot
 
     case RestoreLastSnapshot =>
@@ -98,7 +100,7 @@ class MasterNode extends Actor with ActorLogging with Timers {
     case SetSnapshot =>
       context.system.scheduler.scheduleOnce(5 seconds) {
         val newSnapshot = randomUUID().toString
-        context.child("Source").get ! Marker(newSnapshot, 0)
+        children.source ! Marker(newSnapshot, 0)
         timers.startSingleTimer(SnapshotTimer, RestoreLastSnapshot, 10 seconds)
         snapshotToAck = newSnapshot
       }
@@ -111,7 +113,6 @@ class MasterNode extends Actor with ActorLogging with Timers {
 
   // TODO generalize
   def restoreTopology(uuid: String): Unit = {
-
     val sink = context.actorOf(Sink.props, "Sink")
 
     val map21 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map21")
@@ -134,8 +135,9 @@ class MasterNode extends Actor with ActorLogging with Timers {
     val map1Initializer = RestoreSnapshot(uuid, Vector(source))
     map11 ! map1Initializer
     map12 ! map1Initializer
-    toInitializeFromSnapshot = 6
 
+    toInitializeFromSnapshot = 6
+    children = Children(source, Set(map11, map12, map21, map22), sink)
     timers.startSingleTimer(RestoreSnapshotFailureTimer, RestoreSnapshotFailure, 10 seconds)
   }
 
@@ -143,7 +145,15 @@ class MasterNode extends Actor with ActorLogging with Timers {
   def createTopology(): Unit = {
     val sink = context.actorOf(Sink.props, "Sink")
 
-    val map21 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map21")
+    var prova: Boolean = false
+
+    val map21 = context.actorOf(MapOperator.props((s1, s2) => {
+      if (new scala.util.Random().nextFloat() > 0.5) {
+        (s1, s2 + "!!!")
+      } else {
+        throw new Exception("Failed!")
+      }
+    }, Vector(sink)), "Map21")
     val map22 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map22")
 
     val sinkInitializer = Initializer(Vector(map21, map22))
@@ -162,8 +172,9 @@ class MasterNode extends Actor with ActorLogging with Timers {
     val map1Initializer = Initializer(Vector(source))
     map11 ! map1Initializer
     map12 ! map1Initializer
-    toInitialize = 6
 
+    toInitialize = 6
+    children = Children(source, Set(map11, map12, map21, map22), sink)
     timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
   }
 }
@@ -184,4 +195,20 @@ object MasterNode {
   final case class SnapshotDone(uuid: String)
 
   def props: Props = Props(new MasterNode)
+
+
+  case class Children(source: ActorRef, operators: Set[ActorRef], sink: ActorRef) {
+    def watchAll()(implicit context: ActorContext): Unit = {
+      context.watch(source)
+      operators.foreach(context.watch)
+      context.watch(sink)
+    }
+
+    def unwatchAll()(implicit context: ActorContext): Unit = {
+      context.unwatch(source)
+      operators.foreach(context.unwatch)
+      context.unwatch(sink)
+    }
+
+  }
 }
