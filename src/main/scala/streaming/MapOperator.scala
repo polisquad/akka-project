@@ -8,6 +8,7 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 // TODO refactor to generalize
+// TODO test
 class MapOperator(
     f: (String, String) => (String, String),
     downStreams: Vector[ActorRef]
@@ -87,7 +88,7 @@ class MapOperator(
         if (t.offset == expectedOffset) {
           val (newKey, newValue) = f(t.key, t.value)
 
-          val downStreamOp = downStreams(newValue.hashCode() % downStreams.size)
+          val downStreamOp = downStreams(newKey.hashCode() % downStreams.size)
           val newOffset = downOffsets(downStreamOp)
 
           val outTuple = Tuple(newKey, newValue, newOffset)

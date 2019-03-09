@@ -7,6 +7,8 @@ object Streaming {
 
   final case class Initializer(upStreams: Vector[ActorRef])
 
+  final case class MultiInitializer(upStreams: Vector[Vector[ActorRef]])
+
   case object Initialized
 
 
@@ -15,6 +17,8 @@ object Streaming {
   //final case class InitializedFromSnapshot(uuid: String)
 
   final case class RestoreSnapshot(uuid: String, upStreams: Vector[ActorRef])
+
+  final case class MultiRestoreSnapshot(uuid: String, upStreams: Vector[Vector[ActorRef]])
 
   final case class RestoredSnapshot(uuid: String)
 
