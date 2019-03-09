@@ -1,6 +1,6 @@
 package streaming
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MapOperator.{TakeSnapshot, Tuple}
 import streaming.Streaming._
 
@@ -176,5 +176,6 @@ class AggregateOperator(
 }
 
 object AggregateOperator {
-
+  def props(f: Seq[(String, String)] => (String, String), downStreams: Vector[ActorRef], toAccumulate: Int): Props =
+    Props(new AggregateOperator(f, downStreams, toAccumulate))
 }
