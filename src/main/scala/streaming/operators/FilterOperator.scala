@@ -1,16 +1,19 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MapOperator.{TakeSnapshot, Tuple}
+import streaming.MasterNode
 import streaming.Streaming._
+import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 // TODO test
-class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
-  // TODO multi upstream to one downstream
+class FilterOperator(
+  f: (String, String) => Boolean,
+  downStreams: Vector[ActorRef]
+  ) extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -22,23 +25,22 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLoggi
   var markersToAck: Int = _
   var uuidToAck: String = _
 
-  def init(upStreams: Vector[Vector[ActorRef]]): Unit = {
-    val flattenedUpStreams = upStreams.flatten
-    upOffsets = flattenedUpStreams.map(x => x -> 0L).toMap
+  def init(upStreams: Vector[ActorRef]): Unit = {
+    upOffsets = upStreams.map(x => x -> 0L).toMap
     downOffsets = downStreams.map(x => x -> 0L).toMap
-    blockedChannels = flattenedUpStreams.map(x => x -> false).toMap
+    blockedChannels = upStreams.map(x => x -> false).toMap
   }
 
   def snapshot(): Unit =
-    // TODO
+  // TODO
     log.info("Snapshotting...")
 
   def restoreSnapshot(uuid: String): Unit =
-    // TODO
+  // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
-    case MultiInitializer(upStreams) =>
+    case Initializer(upStreams) =>
       init(upStreams)
 
       Future {
@@ -49,7 +51,7 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLoggi
         case Failure(_) => self ! SnapshotFailed
       }
 
-    case MultiRestoreSnapshot(uuid, upStreams) =>
+    case RestoreSnapshot(uuid, upStreams) =>
       init(upStreams)
 
       Future {
@@ -77,23 +79,29 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLoggi
   def operative: Receive = {
     case t: Tuple =>
       if (blockedChannels(sender())) {
+        log.info("Stashing")
         stash()
       } else {
         log.info(s"Received: $t")
         val expectedOffset = upOffsets(sender())
 
         if (t.offset == expectedOffset) {
+          val filtered = f(t.key, t.value)
 
-          val downStreamOp = downStreams(t.key.hashCode() % downStreams.size)
-          val newOffset = downOffsets(downStreamOp)
+          if (!filtered) {
 
-          val outTuple = t.copy(offset = newOffset)
-          downStreamOp ! outTuple
+            val downStreamOp = downStreams(t.key.hashCode() % downStreams.size)
+            val newOffset = downOffsets(downStreamOp)
+
+            val outTuple = t.copy(offset = newOffset)
+            downStreamOp ! outTuple
+
+            downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
+            log.info(s"Sent $outTuple to $downStreamOp")
+          }
 
           upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
-          downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
 
-          log.info(s"Sent $outTuple to $downStreamOp")
         } else {
           throw new Exception(s"Tuple id was not the expected one. Expected $expectedOffset, Received: ${t.offset}")
         }
@@ -158,13 +166,10 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLoggi
       }
   }
 
-
-
 }
 
-object MergeOperator {
-
-  def props(downStreams: Vector[ActorRef]): Props = Props(new MergeOperator(downStreams))
-
+object FilterOperator {
+  def props(f: (String, String) => Boolean, downStreams: Vector[ActorRef]): Props =
+    Props(new FilterOperator(f, downStreams))
 
 }

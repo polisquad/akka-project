@@ -1,9 +1,9 @@
 package streaming
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MapOperator.Tuple
 import streaming.MasterNode.{JobRestarted, JobStarted}
 import streaming.Streaming._
+import streaming.operators.MapOperator.Tuple
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

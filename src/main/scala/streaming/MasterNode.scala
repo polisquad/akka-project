@@ -8,6 +8,8 @@ import streaming.Streaming._
 import scala.concurrent.duration._
 import java.util.UUID.randomUUID
 
+import streaming.operators.MapOperator
+
 
 // TODO test everything
 // TODO test, test, test, test, test....
@@ -144,8 +146,6 @@ class MasterNode extends Actor with ActorLogging with Timers {
   // TODO generalize
   def createTopology(): Unit = {
     val sink = context.actorOf(Sink.props, "Sink")
-
-    var prova: Boolean = false
 
     val map21 = context.actorOf(MapOperator.props((s1, s2) => {
       if (new scala.util.Random().nextFloat() > 0.5) {

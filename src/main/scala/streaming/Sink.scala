@@ -1,9 +1,9 @@
 package streaming
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MapOperator.TakeSnapshot
 import streaming.MasterNode.SnapshotDone
 import streaming.Streaming._
+import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -72,7 +72,7 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
 
 
   def operative: Receive = {
-    case t: MapOperator.Tuple =>
+    case t: Tuple =>
       if (blockedChannels(sender())) {
         stash()
       } else {

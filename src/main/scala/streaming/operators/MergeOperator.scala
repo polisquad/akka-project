@@ -1,19 +1,17 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
+import streaming.MasterNode
 import streaming.Streaming._
-import scala.concurrent.duration._
+import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO refactor to generalize
 // TODO test
-class MapOperator(
-    f: (String, String) => (String, String),
-    downStreams: Vector[ActorRef]
-  ) extends Actor with ActorLogging with Stash with Timers {
-  import MapOperator._
+class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
+  // TODO multi upstream to one downstream
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -25,10 +23,11 @@ class MapOperator(
   var markersToAck: Int = _
   var uuidToAck: String = _
 
-  def init(upStreams: Vector[ActorRef]): Unit = {
-    upOffsets = upStreams.map(x => x -> 0L).toMap
+  def init(upStreams: Vector[Vector[ActorRef]]): Unit = {
+    val flattenedUpStreams = upStreams.flatten
+    upOffsets = flattenedUpStreams.map(x => x -> 0L).toMap
     downOffsets = downStreams.map(x => x -> 0L).toMap
-    blockedChannels = upStreams.map(x => x -> false).toMap
+    blockedChannels = flattenedUpStreams.map(x => x -> false).toMap
   }
 
   def snapshot(): Unit =
@@ -40,7 +39,7 @@ class MapOperator(
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
-    case Initializer(upStreams) =>
+    case MultiInitializer(upStreams) =>
       init(upStreams)
 
       Future {
@@ -51,7 +50,7 @@ class MapOperator(
         case Failure(_) => self ! SnapshotFailed
       }
 
-    case RestoreSnapshot(uuid, upStreams) =>
+    case MultiRestoreSnapshot(uuid, upStreams) =>
       init(upStreams)
 
       Future {
@@ -79,19 +78,17 @@ class MapOperator(
   def operative: Receive = {
     case t: Tuple =>
       if (blockedChannels(sender())) {
-        log.info("Stashing")
         stash()
       } else {
         log.info(s"Received: $t")
         val expectedOffset = upOffsets(sender())
 
         if (t.offset == expectedOffset) {
-          val (newKey, newValue) = f(t.key, t.value)
 
-          val downStreamOp = downStreams(newKey.hashCode() % downStreams.size)
+          val downStreamOp = downStreams(t.key.hashCode() % downStreams.size)
           val newOffset = downOffsets(downStreamOp)
 
-          val outTuple = Tuple(newKey, newValue, newOffset)
+          val outTuple = t.copy(offset = newOffset)
           downStreamOp ! outTuple
 
           upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
@@ -162,19 +159,13 @@ class MapOperator(
       }
   }
 
+
+
 }
 
-object MapOperator {
+object MergeOperator {
 
-  def props(
-    f: (String, String) => (String, String),
-    downStreams: Vector[ActorRef],
-  ): Props =
-    Props(new MapOperator(f, downStreams))
+  def props(downStreams: Vector[ActorRef]): Props = Props(new MergeOperator(downStreams))
 
-  final case class Tuple(key: String, value: String, offset: Long) {
-    override def hashCode(): Int = key.hashCode()
-  }
 
-  final case class TakeSnapshot(uuid: String)
 }

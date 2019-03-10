@@ -1,17 +1,20 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MapOperator.{TakeSnapshot, Tuple}
+import streaming.MasterNode
 import streaming.Streaming._
+import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 // TODO test
-class FlatMapOperator(
-  f: (String, String) => Seq[(String, String)],
-  downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
+class AggregateOperator(
+    f: Seq[(String, String)] => (String, String),
+    downStreams: Vector[ActorRef],
+    toAccumulate: Int
+  ) extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -22,6 +25,8 @@ class FlatMapOperator(
 
   var markersToAck: Int = _
   var uuidToAck: String = _
+
+  var accumulated: Vector[(String, String)] = Vector()
 
   def init(upStreams: Vector[ActorRef]): Unit = {
     upOffsets = upStreams.map(x => x -> 0L).toMap
@@ -85,20 +90,23 @@ class FlatMapOperator(
 
         if (t.offset == expectedOffset) {
 
-          val newTuples = f(t.key, t.value)
-          val tuplesWithIndices = newTuples.zipWithIndex
+          if (accumulated.length < toAccumulate) {
+            // accumulate
+            accumulated = accumulated :+ (t.key, t.value)
+          } else {
+            // we can now compute the aggregate result and send it downstream
+            val aggregateResult = f(accumulated)
+            accumulated = Vector()
 
-          tuplesWithIndices.foreach {
-            case (newTuple, i) =>
-              val downStreamOp = downStreams(newTuple._1.hashCode() % downStreams.size)
-              val newOffset = downOffsets(downStreamOp)
+            val downStreamOp = downStreams(aggregateResult._1.hashCode() % downStreams.size)
+            val newOffset = downOffsets(downStreamOp)
 
-              val outTuple = Tuple(newTuple._1, newTuple._2, newOffset + i)
-              downStreamOp ! outTuple
+            val outTuple = Tuple(aggregateResult._1, aggregateResult._2, newOffset)
+            downStreamOp ! outTuple
 
-              downOffsets = downOffsets.updated(downStreamOp, newOffset + tuplesWithIndices.size)
+            downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
 
-              log.info(s"Sent $outTuple to $downStreamOp")
+            log.info(s"Sent $outTuple to $downStreamOp")
           }
 
           upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
@@ -168,8 +176,7 @@ class FlatMapOperator(
   }
 }
 
-object FlatMapOperator {
-  def props(f: (String, String) => Seq[(String, String)], downStreams: Vector[ActorRef]): Props =
-    Props(new FlatMapOperator(f, downStreams))
-
+object AggregateOperator {
+  def props(f: Seq[(String, String)] => (String, String), downStreams: Vector[ActorRef], toAccumulate: Int): Props =
+    Props(new AggregateOperator(f, downStreams, toAccumulate))
 }

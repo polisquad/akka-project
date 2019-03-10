@@ -1,12 +1,13 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MapOperator.{TakeSnapshot, Tuple}
+import streaming.MasterNode
 import streaming.Streaming._
+import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 // TODO test
 class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with ActorLogging with Stash with Timers {
@@ -84,10 +85,10 @@ class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with Ac
 
         if (t.offset == expectedOffset) {
 
-          val downStreamOpSplit = downStreams(t.key.hashCode() % downStreams.size)
-
           downStreams.map {
-            split => split(downStreamOpSplit)
+            split =>
+              val downStreamOp = t.key.hashCode() % split.size
+              split(downStreamOp)
           } foreach {
             downStreamOp =>
               val newOffset = downOffsets(downStreamOp)

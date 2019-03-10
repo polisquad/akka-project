@@ -1,18 +1,20 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MapOperator.{TakeSnapshot, Tuple}
+import streaming.MasterNode
 import streaming.Streaming._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
+// TODO refactor to generalize
 // TODO test
-class FilterOperator(
-  f: (String, String) => Boolean,
-  downStreams: Vector[ActorRef]
+class MapOperator(
+    f: (String, String) => (String, String),
+    downStreams: Vector[ActorRef]
   ) extends Actor with ActorLogging with Stash with Timers {
+  import MapOperator._
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -31,11 +33,11 @@ class FilterOperator(
   }
 
   def snapshot(): Unit =
-  // TODO
+    // TODO
     log.info("Snapshotting...")
 
   def restoreSnapshot(uuid: String): Unit =
-  // TODO
+    // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
@@ -85,22 +87,18 @@ class FilterOperator(
         val expectedOffset = upOffsets(sender())
 
         if (t.offset == expectedOffset) {
-          val filtered = f(t.key, t.value)
+          val (newKey, newValue) = f(t.key, t.value)
 
-          if (!filtered) {
+          val downStreamOp = downStreams(newKey.hashCode() % downStreams.size)
+          val newOffset = downOffsets(downStreamOp)
 
-            val downStreamOp = downStreams(t.key.hashCode() % downStreams.size)
-            val newOffset = downOffsets(downStreamOp)
-
-            val outTuple = t.copy(offset = newOffset)
-            downStreamOp ! outTuple
-
-            downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
-            log.info(s"Sent $outTuple to $downStreamOp")
-          }
+          val outTuple = Tuple(newKey, newValue, newOffset)
+          downStreamOp ! outTuple
 
           upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
+          downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
 
+          log.info(s"Sent $outTuple to $downStreamOp")
         } else {
           throw new Exception(s"Tuple id was not the expected one. Expected $expectedOffset, Received: ${t.offset}")
         }
@@ -167,8 +165,17 @@ class FilterOperator(
 
 }
 
-object FilterOperator {
-  def props(f: (String, String) => Boolean, downStreams: Vector[ActorRef]): Props =
-    Props(new FilterOperator(f, downStreams))
+object MapOperator {
 
+  def props(
+    f: (String, String) => (String, String),
+    downStreams: Vector[ActorRef],
+  ): Props =
+    Props(new MapOperator(f, downStreams))
+
+  final case class Tuple(key: String, value: String, offset: Long) {
+    override def hashCode(): Int = key.hashCode()
+  }
+
+  final case class TakeSnapshot(uuid: String)
 }
