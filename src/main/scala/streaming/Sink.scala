@@ -131,5 +131,5 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
 }
 
 object Sink {
-  def props: Props = Props(new Sink)
+  def props(): Props = Props(new Sink)
 }
