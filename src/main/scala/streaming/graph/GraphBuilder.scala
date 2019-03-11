@@ -5,7 +5,9 @@ import streaming.graph.nodes._
 
 class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
 
-  def deployGraph(graphCreator: ActorRef): Unit = {
+  case class GraphInfo(source: ActorRef, operators: Set[ActorRef], sink: ActorRef, numDeployed: Int)
+
+  def deployGraph(graphCreator: ActorRef): GraphInfo = {
     val source = SourceNode()
     val sink = SinkNode()
 
@@ -14,7 +16,7 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
 
     firstNode match {
       case n: OneToOneNode =>
-        n.prev = firstNode
+        n.prev = source
       case _ =>
         throw new Exception("First node must be a OneToOneNode")
     }
@@ -26,14 +28,34 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
     // TODO if deploy else restore
     sink.initialize(graphCreator)
 
-    val fullGraph = source +: stream.nodes :+ sink
+    val (operators, numDeployed) = parseGraph(stream)
 
-    // TODO add full graph
-    // fullGraph.map {
-    //  case n: SplitNode =>
-
-    //}
+    GraphInfo(source.deployed(0), operators, sink.deployed(0), numDeployed)
   }
+
+  def parseGraph(graph: Stream): (Set[ActorRef], Int) = {
+
+    var deployedCounts: Int = 0
+    var nodes: Set[ActorRef] = Set()
+
+    graph.nodes.foreach {
+      case n: SplitNode =>
+        deployedCounts += n.deployed.size
+        nodes = nodes ++ n.deployed
+
+        n.subStreams.foreach { substream =>
+          val (subNodes, subDeployedCounts) = parseGraph(substream)
+          deployedCounts += subDeployedCounts
+          nodes = nodes ++ subNodes
+        }
+      case n =>
+        deployedCounts += n.deployed.size
+        nodes = nodes ++ n.deployed
+    }
+
+    (nodes, deployedCounts)
+  }
+
 }
 
 object GraphBuilder {

@@ -1,8 +1,9 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.{SplitOperator}
+import streaming.operators.SplitOperator
+import streaming.graph.Stream
 
-class SplitNode(parallelism: Int, multi: Int) extends OneToMultiNode(parallelism, multi) {
+class SplitNode(parallelism: Int, multi: Int, val subStreams: Seq[Stream]) extends OneToMultiNode(parallelism, multi) {
 
   override def deploy(downStreams: Vector[Vector[ActorRef]])(implicit context: ActorContext): Vector[ActorRef] = {
     (for (_ <- 1 to parallelism)
@@ -11,6 +12,6 @@ class SplitNode(parallelism: Int, multi: Int) extends OneToMultiNode(parallelism
 }
 
 object SplitNode {
-  def apply(parallelism: Int, multi: Int): SplitNode =
-    new SplitNode(parallelism, multi)
+  def apply(parallelism: Int, multi: Int, subStreams: Seq[Stream]): SplitNode =
+    new SplitNode(parallelism, multi, subStreams)
 }

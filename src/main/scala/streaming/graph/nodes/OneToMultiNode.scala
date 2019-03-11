@@ -27,5 +27,6 @@ abstract class OneToMultiNode(parallelism: Int, multi: Int) extends Node(paralle
 
   override def initialize(sender: ActorRef): Unit = {
     deployed.foreach(_.tell(Initializer(prev.getUpStreams), sender))
+    prev.initialize(sender)
   }
 }

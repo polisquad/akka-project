@@ -1,6 +1,7 @@
 package streaming.graph.nodes
 
 import akka.actor.{ActorContext, ActorRef}
+import streaming.Streaming.{MultiInitializer}
 
 import scala.annotation.tailrec
 
@@ -27,6 +28,8 @@ abstract class MultiToOneNode(parallelism: Int, multi: Int) extends Node(paralle
       }
     }
 
-    loop(prevs, left, Vector())
+    val upStreams = loop(prevs, left, Vector())
+    deployed.foreach(_.tell(MultiInitializer(upStreams), sender))
+    prevs.foreach(_.initialize(sender))
   }
 }

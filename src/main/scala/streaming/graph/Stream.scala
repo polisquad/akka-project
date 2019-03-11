@@ -30,7 +30,7 @@ class Stream(val nodes: Vector[Node]) {
 
   def splitThenMerge(subStreams: Seq[Stream], splitParallelism: Int, mergeParallelism: Int): Stream = {
     val numOfSplit = subStreams.size
-    val splitNode = SplitNode(splitParallelism, numOfSplit)
+    val splitNode = SplitNode(splitParallelism, numOfSplit, subStreams)
     val mergeNode = MergeNode(mergeParallelism, numOfSplit)
 
     subStreams.foreach {

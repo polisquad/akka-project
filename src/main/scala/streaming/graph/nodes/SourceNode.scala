@@ -1,6 +1,7 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
 import streaming.Source
+import streaming.Source.InitializeSource
 
 class SourceNode extends Node(0) {
 
@@ -9,7 +10,9 @@ class SourceNode extends Node(0) {
     deployed = deployedOperators
   }
 
-  override def initialize(sender: ActorRef): Unit = {}
+  override def initialize(sender: ActorRef): Unit = {
+    deployed(0).tell(InitializeSource, sender)
+  }
 }
 
 object SourceNode {

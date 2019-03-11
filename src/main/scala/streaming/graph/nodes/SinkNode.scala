@@ -1,6 +1,7 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
 import streaming.Sink
+import streaming.Streaming.Initializer
 
 class SinkNode extends Node(0) {
   var prev: Node = _
@@ -10,7 +11,10 @@ class SinkNode extends Node(0) {
     prev.backWard(deployed)
   }
 
-  override def initialize(sender: ActorRef): Unit = ???
+  override def initialize(sender: ActorRef): Unit = {
+    deployed(0).tell(Initializer(prev.getUpStreams), sender)
+    prev.initialize(sender)
+  }
 }
 
 object SinkNode {
