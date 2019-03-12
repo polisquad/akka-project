@@ -1,6 +1,6 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.{FilterOperator}
+import streaming.operators.FilterOperator
 
 class FilterNode(parallelism: Int, f: (String, String) => Boolean) extends OneToOneNode(parallelism) {
 

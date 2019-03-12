@@ -1,21 +1,19 @@
 package streaming
 
 import akka.actor.SupervisorStrategy.{Restart, Stop}
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Props, SupervisorStrategy, Terminated, Timers}
-import streaming.Source.{InitializeSource, RestartJob, StartJob}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
+import streaming.Source.{RestartJob, StartJob}
 import streaming.Streaming._
 import streaming.graph.{GraphBuilder, Stream}
 
 import scala.concurrent.duration._
 import java.util.UUID.randomUUID
 
-import streaming.operators.MapOperator
-
 
 // TODO test everything
 // TODO test, test, test, test, test....
 // TODO test different kind of topology
-class MasterNode extends Actor with ActorLogging with Timers {
+class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging with Timers {
   import MasterNode._
   import context.dispatcher
 
@@ -24,11 +22,13 @@ class MasterNode extends Actor with ActorLogging with Timers {
   var lastValidSnapshot: String = _
   var snapshotToAck: String = _
   var children: Children = _
+  var graph: Stream = _ // TODO change also the name Stream to graph
+  var scheduledSnapshot: Cancellable = Cancellable.alreadyCancelled
 
   override def receive: Receive = {
 
-    case CreateTopology(stream) =>
-      createTopology(stream)
+    case CreateTopology =>
+      createTopology()
 
     case InitializedAck =>
       toInitialize -= 1
@@ -81,12 +81,14 @@ class MasterNode extends Actor with ActorLogging with Timers {
     case Terminated(actor) =>
       // If we were taking a snapshot and something has failed just cancel the timer since we are going to
       // restore the last snapshot
+      scheduledSnapshot.cancel()
       timers.cancel(SnapshotTimer)
       children.unwatchAll()
       self ! RestoreLastSnapshot
 
     case RestoreLastSnapshot =>
       restoreTopology(lastValidSnapshot)
+      log.info(s"Restoring ${lastValidSnapshot}")
       context.become(snapshotRestorer(lastValidSnapshot))
 
     case SnapshotDone(uuid) =>
@@ -102,7 +104,10 @@ class MasterNode extends Actor with ActorLogging with Timers {
       }
 
     case SetSnapshot =>
-      context.system.scheduler.scheduleOnce(5 seconds) {
+      if (!scheduledSnapshot.isCancelled)
+        scheduledSnapshot.cancel()
+
+      scheduledSnapshot = context.system.scheduler.scheduleOnce(10 seconds) {
         val newSnapshot = randomUUID().toString
         children.source ! Marker(newSnapshot, 0)
         timers.startSingleTimer(SnapshotTimer, RestoreLastSnapshot, 10 seconds)
@@ -111,83 +116,29 @@ class MasterNode extends Actor with ActorLogging with Timers {
   }
 
   override def supervisorStrategy: SupervisorStrategy =
-    AllForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 seconds) {
+    AllForOneStrategy(maxNrOfRetries = 1, withinTimeRange = 1 seconds) {
       case _ => Stop
     }
 
-  // TODO generalize
-  def restoreTopology(uuid: String): Unit = {
-    val sink = context.actorOf(Sink.props, "Sink")
-
-    val map21 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map21")
-    val map22 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map22")
-
-    val sinkInitializer = RestoreSnapshot(uuid, Vector(map21, map22))
-    sink ! sinkInitializer
-
-    val map11 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2.toLowerCase()), Vector(map21, map22)), "Map11")
-    val map12 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2.toLowerCase()), Vector(map21, map22)), "Map12")
-
-    val map2Initializer = RestoreSnapshot(uuid, Vector(map11, map12))
-
-    map21 ! map2Initializer
-    map22 ! map2Initializer
-
-    val source = context.actorOf(Source.props(Vector(map11, map12)), "Source")
-    source ! RestoreSnapshot(uuid, Vector()) // TODO change this to RestoreSource
-
-    val map1Initializer = RestoreSnapshot(uuid, Vector(source))
-    map11 ! map1Initializer
-    map12 ! map1Initializer
-
-    toInitializeFromSnapshot = 6
-    children = Children(source, Set(map11, map12, map21, map22), sink)
-    timers.startSingleTimer(RestoreSnapshotFailureTimer, RestoreSnapshotFailure, 10 seconds)
-  }
-
-//  // TODO generalize
-//  def createTopology(): Unit = {
-//    val sink = context.actorOf(Sink.props, "Sink")
-//
-//    val map21 = context.actorOf(MapOperator.props((s1, s2) => {
-//      if (new scala.util.Random().nextFloat() > 0.5) {
-//        (s1, s2 + "!!!")
-//      } else {
-//        throw new Exception("Failed!")
-//      }
-//    }, Vector(sink)), "Map21")
-//    val map22 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2 + "!!!"), Vector(sink)), "Map22")
-//
-//    val sinkInitializer = Initializer(Vector(map21, map22))
-//    sink ! sinkInitializer
-//
-//    val map11 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2.toLowerCase()), Vector(map21, map22)), "Map11")
-//    val map12 = context.actorOf(MapOperator.props((s1, s2) => (s1, s2.toLowerCase()), Vector(map21, map22)), "Map12")
-//
-//    val map2Initializer = Initializer(Vector(map11, map12))
-//    map21 ! map2Initializer
-//    map22 ! map2Initializer
-//
-//    val source = context.actorOf(Source.props(Vector(map11, map12)), "Source")
-//    source ! InitializeSource
-//
-//    val map1Initializer = Initializer(Vector(source))
-//    map11 ! map1Initializer
-//    map12 ! map1Initializer
-//
-//    toInitialize = 6
-//    children = Children(source, Set(map11, map12, map21, map22), sink)
-//    timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
-//  }
-
-  def createTopology(s: Stream): Unit = {
-    val graphBuilder = GraphBuilder(s)
-    val graphInfo = graphBuilder.deployGraph(self)
+  def createTopology(): Unit = {
+    val graphBuilder = GraphBuilder(streamBuilder())
+    val graphInfo = graphBuilder.initializeGraph(self)
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
     toInitialize = graphInfo.numDeployed
     timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
   }
+
+  def restoreTopology(lastValidSnapshot: String): Unit = {
+    val graphBuilder = GraphBuilder(streamBuilder())
+    val graphInfo = graphBuilder.restoreGraph(self, lastValidSnapshot)
+
+    children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
+    toInitializeFromSnapshot = graphInfo.numDeployed
+    timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
+  }
+
+
 }
 
 object MasterNode {
@@ -195,7 +146,7 @@ object MasterNode {
   val RestoreSnapshotFailureTimer = "RestoreSnapshotFailure"
   val SnapshotTimer = "SnapshotTimeout"
 
-  case class CreateTopology(stream: Stream)
+  case object CreateTopology
   case object InitializedAck
   case object DeployFailure
   case object JobStarted
@@ -205,7 +156,7 @@ object MasterNode {
   case object RestoreSnapshotFailure
   final case class SnapshotDone(uuid: String)
 
-  def props: Props = Props(new MasterNode)
+  def props(streamBuilder: () => Stream) : Props = Props(new MasterNode(streamBuilder))
 
 
   case class Children(source: ActorRef, operators: Set[ActorRef], sink: ActorRef) {

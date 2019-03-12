@@ -7,7 +7,19 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
 
   case class GraphInfo(source: ActorRef, operators: Set[ActorRef], sink: ActorRef, numDeployed: Int)
 
-  def deployGraph(graphCreator: ActorRef): GraphInfo = {
+  sealed trait DeployMode
+  case object Initialize extends DeployMode
+  final case class Restore(uuid: String) extends DeployMode
+
+
+  def initializeGraph(graphCreator: ActorRef): GraphInfo =
+    deployGraph(graphCreator, Initialize)
+
+  def restoreGraph(graphCreator: ActorRef, uuid: String): GraphInfo =
+    deployGraph(graphCreator, Restore(uuid))
+
+
+  def deployGraph(graphCreator: ActorRef, deployMode: DeployMode): GraphInfo = {
     val source = SourceNode()
     val sink = SinkNode()
 
@@ -22,19 +34,32 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
     }
 
     sink.prev = lastNode
-
     sink.backWard(Vector())
 
-    // TODO if deploy else restore
+    deployMode match {
+      case Initialize =>
+        initialize(graphCreator, source, sink)
+      case Restore(uuid) =>
+        restore(graphCreator, source, sink, uuid)
+    }
+
+  }
+
+  private def initialize(graphCreator: ActorRef, source: SourceNode, sink: SinkNode): GraphInfo = {
     sink.initialize(graphCreator)
-
     val (operators, numDeployed) = parseGraph(stream)
-
     GraphInfo(source.deployed(0), operators, sink.deployed(0), numDeployed)
   }
 
-  def parseGraph(graph: Stream): (Set[ActorRef], Int) = {
+  private def restore(graphCreator: ActorRef, source: SourceNode, sink: SinkNode, uuid: String): GraphInfo = {
+    sink.restore(graphCreator, uuid)
+    val (operators, numDeployed) = parseGraph(stream)
+    GraphInfo(source.deployed(0), operators, sink.deployed(0), numDeployed)
+  }
 
+
+
+  def parseGraph(graph: Stream): (Set[ActorRef], Int) = {
     var deployedCounts: Int = 0
     var nodes: Set[ActorRef] = Set()
 
@@ -53,7 +78,7 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
         nodes = nodes ++ n.deployed
     }
 
-    (nodes, deployedCounts)
+    (nodes, deployedCounts + 2) // + 2 because of sink and source
   }
 
 }

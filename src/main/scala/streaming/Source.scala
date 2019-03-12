@@ -54,6 +54,7 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
         case Failure(_) => self ! SnapshotFailed
       }
 
+    // TODO change this message ?
     case RestoreSnapshot(uuid, _) =>
       init()
 
