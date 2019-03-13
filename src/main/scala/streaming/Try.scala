@@ -6,8 +6,8 @@ import streaming.graph.Stream
 object Try {
 
   def someStream(): Stream =
-    Stream()
-      .map(parallelism = 1, (s1, s2) => {
+    Stream.createFromDefaultSource()
+      .map(parallelism = 2, (s1, s2) => {
         val x = new scala.util.Random().nextFloat()
         println(x)
               if (x > 0.9) {
@@ -16,7 +16,7 @@ object Try {
                 throw new Exception("Failed!")
               }
             })
-      .map(parallelism = 1, (s1, s2) => (s1, s2 + "!!!"))
+      .map(parallelism = 2, (s1, s2) => (s1, s2 + "!!!"))
 
   def main(args: Array[String]): Unit = {
 

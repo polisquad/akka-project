@@ -1,5 +1,6 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
+import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.MapOperator
 
 class MapNode(parallelism: Int,

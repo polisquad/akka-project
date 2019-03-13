@@ -1,7 +1,7 @@
 package streaming.graph
 
 import streaming.graph.nodes._
-import streaming.graph.nodes.OneToOneNode
+import streaming.graph.nodes.types.{Node, OneToMultiNode, OneToOneNode}
 
 
 class Stream(val nodes: Vector[Node]) {

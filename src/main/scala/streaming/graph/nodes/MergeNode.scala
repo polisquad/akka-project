@@ -1,6 +1,7 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.{MergeOperator}
+import streaming.graph.nodes.types.MultiToOneNode
+import streaming.operators.MergeOperator
 
 class MergeNode(parallelism: Int, multi: Int) extends MultiToOneNode(parallelism, multi) {
 

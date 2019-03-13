@@ -1,6 +1,7 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.{FlatMapOperator}
+import streaming.graph.nodes.types.OneToOneNode
+import streaming.operators.FlatMapOperator
 
 class FlatMapNode(parallelism: Int, f: (String, String) => Seq[(String, String)]) extends OneToOneNode(parallelism) {
 

@@ -2,7 +2,7 @@ package streaming
 
 import akka.actor.SupervisorStrategy.{Restart, Stop}
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
-import streaming.operators.common.Streaming._
+import streaming.operators.common.Messages._
 import streaming.graph.{GraphBuilder, Stream}
 
 import scala.concurrent.duration._
@@ -72,6 +72,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
 
     case Terminated(_) =>
       // If some nodes fail in the meanwhile is received
+      log.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
       throw new Exception("Unable to restore the snapshot")
 
     case RestoreSnapshotFailure =>
@@ -83,7 +84,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
       // If we were taking a snapshot and something has failed just cancel the timer since we are going to
       // restore the last snapshot
 
-      // scheduledSnapshot.cancel() // TODO is is probably not needed
+      scheduledSnapshot.cancel() // TODO is is probably not needed
       timers.cancel(SnapshotTimer)
       children.unwatchAll()
       self ! RestoreLastSnapshot
@@ -118,7 +119,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
   }
 
   override def supervisorStrategy: SupervisorStrategy =
-    AllForOneStrategy(maxNrOfRetries = 1, withinTimeRange = 1 seconds) {
+    AllForOneStrategy(maxNrOfRetries = 1000, withinTimeRange = 5 seconds) {
       case _ => Stop
     }
 

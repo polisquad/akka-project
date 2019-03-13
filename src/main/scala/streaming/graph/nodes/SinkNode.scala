@@ -1,26 +1,16 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.common.Streaming.{Initializer, RestoreSnapshot}
+import streaming.graph.nodes.types.OneToZero
 import streaming.operators.SinkOperator
 
-class SinkNode extends Node(1) {
-  var prev: Node = _
+class SinkNode extends OneToZero(1) {
 
-  override def backWard(downStreams: Vector[ActorRef])(implicit context: ActorContext): Unit = {
-    deployed = Vector(context.actorOf(SinkOperator.props()))
-    prev.backWard(deployed)
-  }
-
-  override def initialize(sender: ActorRef): Unit = {
-    deployed(0).tell(Initializer(prev.getUpStreams), sender)
-    prev.initialize(sender)
-  }
-
-  override def restore(sender: ActorRef, uuid: String): Unit = {
-    deployed(0).tell(RestoreSnapshot(uuid, prev.getUpStreams), sender)
-    prev.restore(sender, uuid)
+  override def deploy()(implicit context: ActorContext): Vector[ActorRef] = {
+    (for (_ <- 1 to parallelism)
+      yield context.actorOf(SinkOperator.props())).toVector
   }
 }
+
 
 object SinkNode {
   def apply(): SinkNode = new SinkNode()

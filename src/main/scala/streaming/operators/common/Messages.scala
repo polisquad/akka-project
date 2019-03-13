@@ -2,7 +2,7 @@ package streaming.operators.common
 
 import akka.actor.ActorRef
 
-object Streaming {
+object Messages {
   // TODO place each message where it should belong
   // TODO separate like in graph package when refactoring operators???
 
@@ -16,10 +16,6 @@ object Streaming {
 
   case object Initialized
 
-  //final case class InitializerFromSnapshot(uuid: String, upStreams: Vector[ActorRef])
-
-  //final case class InitializedFromSnapshot(uuid: String)
-
   final case class RestoreSnapshot(uuid: String, upStreams: Vector[ActorRef])
 
   final case class MultiRestoreSnapshot(uuid: String, upStreams: Vector[Vector[ActorRef]])
@@ -27,6 +23,8 @@ object Streaming {
   final case class RestoredSnapshot(uuid: String)
 
   final case class Marker(uuid: String, offset: Long)
+
+  final case class TakeSnapshot(uuid: String)
 
   final case class SnapshotTaken(uuid: String)
 

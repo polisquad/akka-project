@@ -2,8 +2,7 @@ package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
-import streaming.operators.common.Streaming._
-import streaming.operators.MapOperator.{TakeSnapshot}
+import streaming.operators.common.Messages._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

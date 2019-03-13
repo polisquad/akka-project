@@ -2,8 +2,7 @@ package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
-import streaming.operators.common.Streaming._
-import streaming.operators.MapOperator.{TakeSnapshot}
+import streaming.operators.common.Messages._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -135,7 +134,7 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLoggi
       }
       markersToAck = downStreams.size
       uuidToAck = uuid
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds)
+      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds)
 
     case MarkersLost =>
       throw new Exception("Markers have been lost")

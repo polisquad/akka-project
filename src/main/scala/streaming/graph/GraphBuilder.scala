@@ -2,6 +2,7 @@ package streaming.graph
 
 import akka.actor.{ActorContext, ActorRef}
 import streaming.graph.nodes._
+import streaming.graph.nodes.types.OneToOneNode
 
 class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
 
@@ -77,7 +78,6 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
         deployedCounts += n.deployed.size
         nodes = nodes ++ n.deployed
     }
-
     (nodes, deployedCounts + 2) // + 2 because of sink and source
   }
 

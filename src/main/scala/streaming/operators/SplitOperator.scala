@@ -2,8 +2,7 @@ package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
-import streaming.operators.common.Streaming._
-import streaming.operators.MapOperator.{TakeSnapshot}
+import streaming.operators.common.Messages._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -143,7 +142,7 @@ class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with Ac
 
       markersToAck = flattenedDownStreams.size
       uuidToAck = uuid
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds) // TODO remove hardcoded
+      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds) // TODO remove hardcoded
                                                                                          // timeouts everywhere
 
     case MarkersLost =>

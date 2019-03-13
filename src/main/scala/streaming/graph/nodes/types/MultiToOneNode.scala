@@ -1,7 +1,7 @@
-package streaming.graph.nodes
+package streaming.graph.nodes.types
 
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.common.Streaming.{MultiInitializer, MultiRestoreSnapshot}
+import streaming.operators.common.Messages.{MultiInitializer, MultiRestoreSnapshot}
 
 import scala.annotation.tailrec
 

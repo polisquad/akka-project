@@ -1,4 +1,4 @@
-package streaming.graph.nodes
+package streaming.graph.nodes.types
 
 import akka.actor.{ActorContext, ActorRef}
 

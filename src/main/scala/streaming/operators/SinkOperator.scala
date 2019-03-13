@@ -3,8 +3,7 @@ package streaming.operators
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
 import streaming.MasterNode.SnapshotDone
-import streaming.operators.common.Streaming._
-import streaming.operators.MapOperator.TakeSnapshot
+import streaming.operators.common.Messages._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -19,7 +18,6 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
   var blockedChannels: Map[ActorRef, Boolean] = _
   var numBlocked: Int = 0
 
-  var markersToAck: Int = _
   var uuidToAck: String = _
 
   var filePointer: Long = 0 // TODO write to file like source, if restart from zero read it
@@ -104,15 +102,14 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
 
     case SnapshotTaken(uuid) =>
       context.parent ! SnapshotDone(uuid)
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds)
+      uuidToAck = uuid
+      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds)
 
     case MarkerAck(uuid) =>
-      if (uuid == uuidToAck) {
         timers.cancel("MarkersLostTimer")
         blockedChannels = blockedChannels.map { case (k, _) => k -> false }
         numBlocked = 0
         unstashAll()
-      }
 
     case marker @ Marker(uuid, offset) =>
       log.info(s"Received marker ${marker}")

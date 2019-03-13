@@ -2,6 +2,7 @@ package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
 import streaming.operators.SplitOperator
 import streaming.graph.Stream
+import streaming.graph.nodes.types.OneToMultiNode
 
 class SplitNode(parallelism: Int, multi: Int, val subStreams: Seq[Stream]) extends OneToMultiNode(parallelism, multi) {
 

@@ -1,5 +1,6 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
+import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.AggregateOperator
 
 class AggregateNode(parallelism: Int, f: Seq[(String, String)] => (String, String), toAccumulate: Int) extends OneToOneNode(parallelism) {
