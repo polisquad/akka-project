@@ -1,7 +1,7 @@
 package streaming.graph.nodes
 
 import akka.actor.{ActorContext, ActorRef}
-import streaming.Streaming.{Initializer, RestoreSnapshot}
+import streaming.operators.common.Streaming.{Initializer, RestoreSnapshot}
 
 abstract class OneToOneNode(parallelism: Int) extends Node(parallelism) {
   var prev: Node = _

@@ -1,17 +1,17 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
+import streaming.MasterNode
 import streaming.MasterNode.{JobRestarted, JobStarted}
-import streaming.Streaming._
-import streaming.operators.MapOperator.Tuple
+import streaming.operators.common.Streaming._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 // TODO refactor to generalize
-class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
-  import Source._
+class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
+  import SourceOperator._
   import context.dispatcher
 
   var data: List[(String, String)] = List(
@@ -93,21 +93,24 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
       if (takingSnapshot) {
         stash()
       } else {
-        if (data != Nil) { // TODO change this
-          val downStreamOp = downStreams(data.head._1.hashCode() % downStreams.size)
-          val newOffset = downOffsets(downStreamOp)
+        data match {
+          case head :: tail =>
+            val downStreamOp = downStreams(head._1.hashCode() % downStreams.size)
+            val newOffset = downOffsets(downStreamOp)
 
-          val outTuple = Tuple(data.head._1, data.head._2, newOffset)
+            val outTuple = Tuple(head._1, head._2, newOffset)
 
-          downStreamOp ! outTuple
+            downStreamOp ! outTuple
 
-          data = data.tail
-          log.info(s"Producing: $outTuple")
+            data = tail
+            log.info(s"Producing: $outTuple")
 
-          downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
-          offset += 1
+            downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
+            offset += 1
 
-          self ! Produce
+            self ! Produce
+
+          case Nil => //TODO}
         }
       }
 
@@ -154,9 +157,9 @@ class Source(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with
 
 }
 
-object Source {
+object SourceOperator {
   val MarkersLostTimer = "MarkersLost"
-  def props(downStreams: Vector[ActorRef]): Props = Props(new Source(downStreams))
+  def props(downStreams: Vector[ActorRef]): Props = Props(new SourceOperator(downStreams))
 
   case object Produce
   case object InitializeSource

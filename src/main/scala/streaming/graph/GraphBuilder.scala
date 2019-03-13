@@ -68,8 +68,8 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
         deployedCounts += n.deployed.size
         nodes = nodes ++ n.deployed
 
-        n.subStreams.foreach { substream =>
-          val (subNodes, subDeployedCounts) = parseGraph(substream)
+        n.subStreams.foreach { subStream =>
+          val (subNodes, subDeployedCounts) = parseGraph(subStream)
           deployedCounts += subDeployedCounts
           nodes = nodes ++ subNodes
         }

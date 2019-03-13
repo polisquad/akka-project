@@ -2,7 +2,7 @@ package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
-import streaming.Streaming._
+import streaming.operators.common.Streaming._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -173,9 +173,6 @@ object MapOperator {
   ): Props =
     Props(new MapOperator(f, downStreams))
 
-  final case class Tuple(key: String, value: String, offset: Long) {
-    override def hashCode(): Int = key.hashCode()
-  }
 
   final case class TakeSnapshot(uuid: String)
 }

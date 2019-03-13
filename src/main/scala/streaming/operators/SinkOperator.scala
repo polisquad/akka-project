@@ -1,22 +1,26 @@
-package streaming
+package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
+import streaming.MasterNode
 import streaming.MasterNode.SnapshotDone
-import streaming.Streaming._
-import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
+import streaming.operators.common.Streaming._
+import streaming.operators.MapOperator.TakeSnapshot
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 // TODO refactor to generalize
-class Sink extends Actor with ActorLogging with Stash with Timers {
+class SinkOperator extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
 
   var blockedChannels: Map[ActorRef, Boolean] = _
   var numBlocked: Int = 0
+
+  var markersToAck: Int = _
+  var uuidToAck: String = _
 
   var filePointer: Long = 0 // TODO write to file like source, if restart from zero read it
 
@@ -102,11 +106,13 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
       context.parent ! SnapshotDone(uuid)
       timers.startSingleTimer("MarkersLostTimer", MarkersLost, 2 seconds)
 
-    case MarkerAck(_) => // TODO change this message? it is not really a marker ack
-      timers.cancel("MarkersLostTimer")
-      blockedChannels = blockedChannels.map {case (k, _) => k -> false}
-      numBlocked = 0
-      unstashAll()
+    case MarkerAck(uuid) =>
+      if (uuid == uuidToAck) {
+        timers.cancel("MarkersLostTimer")
+        blockedChannels = blockedChannels.map { case (k, _) => k -> false }
+        numBlocked = 0
+        unstashAll()
+      }
 
     case marker @ Marker(uuid, offset) =>
       log.info(s"Received marker ${marker}")
@@ -130,6 +136,6 @@ class Sink extends Actor with ActorLogging with Stash with Timers {
 
 }
 
-object Sink {
-  def props(): Props = Props(new Sink)
+object SinkOperator {
+  def props(): Props = Props(new SinkOperator)
 }

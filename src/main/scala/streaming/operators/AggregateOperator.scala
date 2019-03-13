@@ -2,8 +2,8 @@ package streaming.operators
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
-import streaming.Streaming._
-import streaming.operators.MapOperator.{TakeSnapshot, Tuple}
+import streaming.operators.common.Streaming._
+import streaming.operators.MapOperator.TakeSnapshot
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -89,7 +89,6 @@ class AggregateOperator(
         val expectedOffset = upOffsets(sender())
 
         if (t.offset == expectedOffset) {
-
           if (accumulated.length < toAccumulate) {
             // accumulate
             accumulated = accumulated :+ (t.key, t.value)

@@ -2,12 +2,13 @@ package streaming
 
 import akka.actor.SupervisorStrategy.{Restart, Stop}
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
-import streaming.Source.{RestartJob, StartJob}
-import streaming.Streaming._
+import streaming.operators.common.Streaming._
 import streaming.graph.{GraphBuilder, Stream}
 
 import scala.concurrent.duration._
 import java.util.UUID.randomUUID
+
+import streaming.operators.SourceOperator.{RestartJob, StartJob}
 
 
 // TODO test everything
@@ -42,11 +43,11 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
 
     case JobStarted =>
       timers.cancel(DeployFailureTimer)
-      lastValidSnapshot = "start"
+      lastValidSnapshot = "start" // TODO change this and set to normal uuid?
       context.become(operative)
       self ! SetSnapshot
 
-    case Terminated(actor) =>
+    case Terminated(_) =>
       // If some nodes fail before JobStarted is received
       throw new Exception("Unable to start the Job")
 
@@ -69,7 +70,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
       context.become(operative)
       self ! SetSnapshot
 
-    case Terminated(actor) =>
+    case Terminated(_) =>
       // If some nodes fail in the meanwhile is received
       throw new Exception("Unable to restore the snapshot")
 
@@ -78,10 +79,11 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
   }
 
   def operative: Receive = {
-    case Terminated(actor) =>
+    case Terminated(_) =>
       // If we were taking a snapshot and something has failed just cancel the timer since we are going to
       // restore the last snapshot
-      scheduledSnapshot.cancel()
+
+      // scheduledSnapshot.cancel() // TODO is is probably not needed
       timers.cancel(SnapshotTimer)
       children.unwatchAll()
       self ! RestoreLastSnapshot

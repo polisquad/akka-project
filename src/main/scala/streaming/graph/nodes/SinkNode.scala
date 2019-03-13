@@ -1,13 +1,13 @@
 package streaming.graph.nodes
 import akka.actor.{ActorContext, ActorRef}
-import streaming.Sink
-import streaming.Streaming.{Initializer, RestoreSnapshot}
+import streaming.operators.common.Streaming.{Initializer, RestoreSnapshot}
+import streaming.operators.SinkOperator
 
 class SinkNode extends Node(1) {
   var prev: Node = _
 
   override def backWard(downStreams: Vector[ActorRef])(implicit context: ActorContext): Unit = {
-    deployed = Vector(context.actorOf(Sink.props()))
+    deployed = Vector(context.actorOf(SinkOperator.props()))
     prev.backWard(deployed)
   }
 

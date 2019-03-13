@@ -57,6 +57,7 @@ class Stream(val nodes: Vector[Node]) {
 }
 
 object Stream {
-  def apply(): Stream = new Stream(Vector())
-  def apply(curr: Vector[Node]): Stream = new Stream(curr)
+  def createFromDefaultSource(): Stream = new Stream(Vector())
+
+  def apply(nodes: Vector[Node]): Stream = new Stream(nodes)
 }
