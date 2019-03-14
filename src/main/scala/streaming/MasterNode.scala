@@ -1,6 +1,6 @@
 package streaming
 
-import akka.actor.SupervisorStrategy.{Restart, Stop}
+import akka.actor.SupervisorStrategy.{Stop}
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
 import streaming.operators.common.Messages._
 import streaming.graph.{GraphBuilder, Stream}
@@ -14,6 +14,7 @@ import streaming.operators.SourceOperator.{RestartJob, StartJob}
 // TODO test everything
 // TODO test, test, test, test, test....
 // TODO test different kind of topology
+// TODO better to encapsulate state into behavior rather than using vars everywhere
 class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging with Timers {
   import MasterNode._
   import context.dispatcher
@@ -26,30 +27,38 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
   var graph: Stream = _ // TODO change also the name Stream to graph
   var scheduledSnapshot: Cancellable = Cancellable.alreadyCancelled
 
-  override def receive: Receive = {
+  var stopped: Int = 0
 
+
+  override def receive: Receive = {
     case CreateTopology =>
       createTopology()
 
     case InitializedAck =>
-      toInitialize -= 1
-      if (toInitialize == 0 ) {
-        children.watchAll()
-        children.source ! StartJob
-        // Note: if the source receives this message the graph is up and running
-        // The source will send a JobStarted to ack the master the node has started processing
-        // If something fails before receiving this message we abort(done in Terminated(actor))
+      if (children.contains(sender())) {
+        toInitialize -= 1
+        if (toInitialize == 0) {
+          children.watchAll()
+          children.source ! StartJob
+          // Note: if the source receives this message the graph is up and running
+          // The source will send a JobStarted to ack the master the node has started processing
+          // If something fails before receiving this message we abort(done in Terminated(actor))
+        }
       }
 
     case JobStarted =>
-      timers.cancel(DeployFailureTimer)
-      lastValidSnapshot = "start" // TODO change this and set to normal uuid?
-      context.become(operative)
-      self ! SetSnapshot
+      if (sender() == children.source) {
+        timers.cancel(DeployFailureTimer)
+        lastValidSnapshot = "start" // TODO change this and set to normal uuid?
+        context.become(operative)
+        self ! SetSnapshot
+      }
 
-    case Terminated(_) =>
-      // If some nodes fail before JobStarted is received
-      throw new Exception("Unable to start the Job")
+    case Terminated(actor) =>
+      if (children.contains(actor)) {
+        // If some nodes fail before JobStarted is received
+        throw new Exception("Unable to start the Job")
+      }
 
     case DeployFailure =>
       throw new Exception("Unable to start the Job")
@@ -57,60 +66,92 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
 
   def snapshotRestorer(uuidToRestore: String): Receive = {
     case RestoredSnapshot(uuid) =>
-      if (uuid == uuidToRestore) {
-        toInitializeFromSnapshot -= 1
-        if (toInitializeFromSnapshot == 0) {
-          children.watchAll()
-          children.source ! RestartJob
+      if (children.contains(sender())) {
+        if (uuid == uuidToRestore) {
+          toInitializeFromSnapshot -= 1
+          if (toInitializeFromSnapshot == 0) {
+            children.watchAll()
+            children.source ! RestartJob
+          }
         }
       }
 
     case JobRestarted =>
-      timers.cancel(RestoreSnapshotFailureTimer)
-      context.become(operative)
-      self ! SetSnapshot
+      if (sender() == children.source) {
+        log.info("Correctly restored snapshot and restarted job")
+        timers.cancel(RestoreSnapshotFailureTimer)
+        context.become(operative)
+        self ! SetSnapshot
+      }
 
-    case Terminated(_) =>
-      // If some nodes fail in the meanwhile is received
-      log.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-      throw new Exception("Unable to restore the snapshot")
+    case Terminated(actor) =>
+      if (children.contains(actor)) { // double-check (using akka's unwatch/watch should be enough)
+
+        if (stopped == 0) {
+          // Graph has been stopped, first terminated message
+
+          log.info("Didn't receive JobRestarted and the graph already failed")
+          timers.cancel(RestoreSnapshotFailureTimer)
+        }
+
+        stopped += 1
+        if (stopped == children.size()) {
+          // All the nodes have been stopped
+
+          children.unwatchAll()
+          context.become(operative)
+          self ! RestoreLastSnapshot
+        }
+      }
 
     case RestoreSnapshotFailure =>
       throw new Exception("Unable to restore the snapshot")
   }
 
   def operative: Receive = {
-    case Terminated(_) =>
-      // If we were taking a snapshot and something has failed just cancel the timer since we are going to
-      // restore the last snapshot
+    case Terminated(actor) =>
+      if (children.contains(actor)) { // double-check (using akka's unwatch/watch should be enough)
+        if (stopped == 0) {
+          // Graph has been stopped, first terminated message
 
-      scheduledSnapshot.cancel() // TODO is is probably not needed
-      timers.cancel(SnapshotTimer)
-      children.unwatchAll()
-      self ! RestoreLastSnapshot
+          scheduledSnapshot.cancel()
+          timers.cancel(SnapshotTimer)
+        }
+
+        stopped += 1
+        if (stopped == children.size()) {
+          // All the nodes have been stopped
+
+          children.unwatchAll()
+          self ! RestoreLastSnapshot
+        }
+      }
 
     case RestoreLastSnapshot =>
+      log.info(s"Restoring last valid snapshot: ${lastValidSnapshot}")
       restoreTopology(lastValidSnapshot)
-      log.info(s"Restoring ${lastValidSnapshot}")
       context.become(snapshotRestorer(lastValidSnapshot))
 
     case SnapshotDone(uuid) =>
-      if (uuid == snapshotToAck) {
-        timers.cancel(SnapshotTimer)
+      if (sender() == children.sink) {
+        if (uuid == snapshotToAck) {
+          timers.cancel(SnapshotTimer)
 
-        // Just to be coherent with the rest of the nodes in the graph which wait for ack regarding the markers
-        // If this ack does not arrive back to the Sink it will fail, but we have the snapshot saved so it's fine
-        sender() ! MarkerAck(uuid)
-        lastValidSnapshot = uuid
-        log.info(s"Performed snapshot with uuid: ${uuid}")
-        self ! SetSnapshot
+          // If this ack does not arrive back to the Sink it will fail, but we have the snapshot saved so it's fine
+          sender() ! MarkerAck(uuid)
+          lastValidSnapshot = uuid
+          log.info(s"Performed snapshot with uuid: ${uuid}")
+
+          self ! SetSnapshot
+        }
       }
 
     case SetSnapshot =>
-      if (!scheduledSnapshot.isCancelled)
-        scheduledSnapshot.cancel()
+      if (!scheduledSnapshot.isCancelled) scheduledSnapshot.cancel()
 
       scheduledSnapshot = context.system.scheduler.scheduleOnce(10 seconds) {
+
+        // TODO change this with a message like StartSnapshot
         val newSnapshot = randomUUID().toString
         children.source ! Marker(newSnapshot, 0)
         timers.startSingleTimer(SnapshotTimer, RestoreLastSnapshot, 10 seconds)
@@ -119,7 +160,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
   }
 
   override def supervisorStrategy: SupervisorStrategy =
-    AllForOneStrategy(maxNrOfRetries = 1000, withinTimeRange = 5 seconds) {
+    AllForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 5 seconds) {
       case _ => Stop
     }
 
@@ -130,6 +171,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
     toInitialize = graphInfo.numDeployed
     timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
+    stopped = 0
   }
 
   def restoreTopology(lastValidSnapshot: String): Unit = {
@@ -138,7 +180,8 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
     toInitializeFromSnapshot = graphInfo.numDeployed
-    timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
+    timers.startSingleTimer(RestoreSnapshotFailureTimer, RestoreSnapshotFailure, 10 seconds)
+    stopped = 0
   }
 
 
@@ -173,6 +216,14 @@ object MasterNode {
       context.unwatch(source)
       operators.foreach(context.unwatch)
       context.unwatch(sink)
+    }
+
+    def contains(actor: ActorRef): Boolean = {
+      source == actor || operators.contains(actor) || sink == actor
+    }
+
+    def size(): Int = {
+      2 + operators.size
     }
 
   }
