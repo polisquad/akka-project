@@ -5,13 +5,7 @@ import streaming.graph.nodes._
 import streaming.graph.nodes.types.OneToOneNode
 
 class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
-
-  case class GraphInfo(source: ActorRef, operators: Set[ActorRef], sink: ActorRef, numDeployed: Int)
-
-  sealed trait DeployMode
-  case object Initialize extends DeployMode
-  final case class Restore(uuid: String) extends DeployMode
-
+  import GraphBuilder._
 
   def initializeGraph(graphCreator: ActorRef): GraphInfo =
     deployGraph(graphCreator, Initialize)
@@ -19,8 +13,7 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
   def restoreGraph(graphCreator: ActorRef, uuid: String): GraphInfo =
     deployGraph(graphCreator, Restore(uuid))
 
-
-  def deployGraph(graphCreator: ActorRef, deployMode: DeployMode): GraphInfo = {
+  private def deployGraph(graphCreator: ActorRef, deployMode: DeployMode): GraphInfo = {
     val source = SourceNode()
     val sink = SinkNode()
 
@@ -58,9 +51,7 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
     GraphInfo(source.deployed(0), operators, sink.deployed(0), numDeployed)
   }
 
-
-
-  def parseGraph(graph: Stream): (Set[ActorRef], Int) = {
+  private def parseGraph(graph: Stream): (Set[ActorRef], Int) = {
     var deployedCounts: Int = 0
     var nodes: Set[ActorRef] = Set()
 
@@ -85,4 +76,10 @@ class GraphBuilder(stream: Stream)(implicit context: ActorContext) {
 
 object GraphBuilder {
   def apply(stream: Stream)(implicit context: ActorContext): GraphBuilder = new GraphBuilder(stream)
+
+  final case class GraphInfo(source: ActorRef, operators: Set[ActorRef], sink: ActorRef, numDeployed: Int)
+
+  sealed trait DeployMode
+  case object Initialize extends DeployMode
+  final case class Restore(uuid: String) extends DeployMode
 }

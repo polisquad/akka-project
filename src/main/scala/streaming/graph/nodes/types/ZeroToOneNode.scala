@@ -6,7 +6,7 @@ import streaming.operators.common.Messages.RestoreSnapshot
 
 abstract class ZeroToOneNode(parallelism: Int) extends Node(parallelism) {
 
-  def deploy(downStreams: Vector[ActorRef])(implicit context: ActorContext): Vector[ActorRef]
+  protected def deploy(downStreams: Vector[ActorRef])(implicit context: ActorContext): Vector[ActorRef]
 
   override def backWard(downStreams: Vector[ActorRef])(implicit context: ActorContext): Unit = {
     deployed = deploy(downStreams)

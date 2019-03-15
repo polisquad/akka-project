@@ -6,7 +6,7 @@ import streaming.graph.nodes.types.{Node, OneToMultiNode, OneToOneNode}
 
 class Stream(val nodes: Vector[Node]) {
 
-  def addOneToOne(newNode: OneToOneNode): Stream = {
+  private def addOneToOne(newNode: OneToOneNode): Stream = {
     nodes match {
       case _ :+ last =>
         newNode.prev = last
