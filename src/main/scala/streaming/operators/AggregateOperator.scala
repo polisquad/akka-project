@@ -3,6 +3,7 @@ package streaming.operators
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
 import streaming.operators.common.Messages._
+import streaming.operators.common.State
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -33,13 +34,21 @@ class AggregateOperator(
     blockedChannels = upStreams.map(x => x -> false).toMap
   }
 
-  def snapshot(): Unit =
-  // TODO
-    log.info("Snapshotting...")
+  def snapshot(uuid: String): Unit = {
+    log.info(s"Snapshotting ${uuid}...")
 
-  def restoreSnapshot(uuid: String): Unit =
-  // TODO
+    State.writeVector(accumulated, uuid + "aggregate-accumulated.txt")
+
+    log.info(f"Written to state accumulated: ${accumulated}")
+  }
+
+  def restoreSnapshot(uuid: String): Unit = {
     log.info(s"Restoring snapshot ${uuid}...")
+
+    accumulated = State.readVector(uuid + "aggregate-accumulated.txt")
+
+    log.info(f"Restored accumulated: ${accumulated}")
+  }
 
   override def receive: Receive = {
     case Initializer(upStreams) =>

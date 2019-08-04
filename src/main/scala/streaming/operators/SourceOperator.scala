@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
 import streaming.MasterNode.{JobRestarted, JobStarted}
 import streaming.operators.common.Messages._
+import streaming.operators.common.State
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -14,13 +15,15 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
   import SourceOperator._
   import context.dispatcher
 
+  // TODO
   var data: List[(String, String)] = List(
     ("a", "ao"),
     ("b", "bau"),
     ("c", "ciao"),
     ("z", "zeus")
   )
-  var offset: Long = 0 // TODO write to file when snapshotting(simulating kafka offset, if restart from scratch read it)
+
+  var offset: Long = 0
 
   var downOffsets: Map[ActorRef, Long] = _
   var takingSnapshot = false
@@ -29,13 +32,21 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
   var uuidToAck: String = _
 
 
-  def snapshot(): Unit =
-    // TODO
-    log.info("Snapshotting...")
+  def snapshot(uuid: String): Unit = {
+    log.info(s"Snapshotting ${uuid}...")
 
-  def restoreSnapshot(uuid: String): Unit =
-    // TODO
+    State.writeLong(offset, uuid + "source-offset.txt")
+
+    log.info(f"Written to state offset: ${offset}")
+  }
+
+  def restoreSnapshot(uuid: String): Unit = {
     log.info(s"Restoring snapshot ${uuid}...")
+
+    offset = State.readLong(uuid + "source-offset.txt")
+
+    log.info(f"Restored offset: ${offset}")
+  }
 
   def init(): Unit = {
     downOffsets = downStreams.map(x => x -> 0L).toMap
@@ -48,7 +59,7 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
 
       Future {
         // Initial starting snapshot
-        snapshot()
+        snapshot("start")
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -116,7 +127,7 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
 
     case Marker(uuid, _) =>
       Future {
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! SnapshotTaken(uuid)
         case Failure(_) => self ! SnapshotFailed

@@ -29,12 +29,10 @@ class FlatMapOperator(
     blockedChannels = upStreams.map(x => x -> false).toMap
   }
 
-  def snapshot(): Unit =
-  // TODO
-    log.info("Snapshotting...")
+  def snapshot(uuid: String): Unit =
+    log.info(s"Snapshotting ${uuid}...")
 
   def restoreSnapshot(uuid: String): Unit =
-  // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
@@ -43,7 +41,7 @@ class FlatMapOperator(
 
       Future {
         // Initial starting snapshot
-        snapshot()
+        snapshot("start")
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -129,7 +127,7 @@ class FlatMapOperator(
 
     case TakeSnapshot(uuid) =>
       Future {
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! SnapshotTaken(uuid)
         case Failure(_) => self ! SnapshotFailed

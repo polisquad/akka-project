@@ -1,9 +1,12 @@
 package streaming.operators
 
+import java.io.RandomAccessFile
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
 import streaming.MasterNode.SnapshotDone
 import streaming.operators.common.Messages._
+import streaming.operators.common.State
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -20,15 +23,25 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
 
   var uuidToAck: String = _
 
-  var filePointer: Long = 0 // TODO write to file like source, if restart from zero read it
+  var filePointer: Long = 0
 
-  def snapshot(): Unit =
-    // TODO
-    log.info("Snapshotting...")
+  var resultFile: RandomAccessFile = _
 
-  def restoreSnapshot(uuid: String): Unit =
-    // TODO
+  def snapshot(uuid: String): Unit = {
+    log.info(s"Snapshotting ${uuid}...")
+
+    State.writeLong(filePointer, uuid + "sink-pointer.txt")
+
+    log.info(f"Written to state file pointer: ${filePointer}")
+  }
+
+  def restoreSnapshot(uuid: String): Unit = {
     log.info(s"Restoring snapshot ${uuid}...")
+
+    filePointer = State.readLong(uuid + "sink-pointer.txt")
+
+    log.info(f"Restored file pointer: ${filePointer}")
+  }
 
   def init(upStreams: Vector[ActorRef]): Unit = {
     upOffsets = upStreams.map(x => x -> 0L).toMap
@@ -41,7 +54,7 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
 
       Future {
         // Initial starting snapshot
-        snapshot()
+        snapshot("start")
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -84,9 +97,8 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
         if (t.offset == expectedOffset) {
           upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
 
-          // TODO write at current filePointer
-          // TODO set new filePointer
-          log.info(s"Emitting result: $t")
+          writeResult(t.value)
+          log.info(s"Written result: ${t.value}")
         } else {
           throw new Exception("Tuple id was not the expected one")
         }
@@ -94,7 +106,7 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
 
     case TakeSnapshot(uuid) =>
       Future {
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! SnapshotTaken(uuid)
         case Failure(_) => self ! SnapshotFailed
@@ -106,10 +118,10 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
       timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds)
 
     case MarkerAck(uuid) =>
-        timers.cancel("MarkersLostTimer")
-        blockedChannels = blockedChannels.map { case (k, _) => k -> false }
-        numBlocked = 0
-        unstashAll()
+      timers.cancel("MarkersLostTimer")
+      blockedChannels = blockedChannels.map { case (k, _) => k -> false }
+      numBlocked = 0
+      unstashAll()
 
     case marker @ Marker(uuid, offset) =>
       log.info(s"Received marker ${marker}")
@@ -129,6 +141,19 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
       } else {
         throw new Exception(s"Marker id was not the expected one. Expected $expectedOffset, Received: ${marker.offset}")
       }
+  }
+
+  def writeResult(value: String): Unit = {
+    if (resultFile == null) {
+      // There is no result file yet
+      resultFile = new RandomAccessFile("/tmp/result.txt", "rw")
+    }
+
+    resultFile.seek(filePointer)
+    resultFile.writeBytes(value)
+    resultFile.writeBytes("\n")
+
+    filePointer += value.length + 1
   }
 
 }

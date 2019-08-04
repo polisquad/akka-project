@@ -30,12 +30,10 @@ class FilterOperator(
     blockedChannels = upStreams.map(x => x -> false).toMap
   }
 
-  def snapshot(): Unit =
-  // TODO
-    log.info("Snapshotting...")
+  def snapshot(uuid: String): Unit =
+    log.info(s"Snapshotting ${uuid}...")
 
   def restoreSnapshot(uuid: String): Unit =
-  // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
@@ -44,7 +42,7 @@ class FilterOperator(
 
       Future {
         // Initial starting snapshot
-        snapshot()
+        snapshot("start")
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -127,7 +125,7 @@ class FilterOperator(
 
     case TakeSnapshot(uuid) =>
       Future {
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! SnapshotTaken(uuid)
         case Failure(_) => self ! SnapshotFailed
