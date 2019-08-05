@@ -4,31 +4,35 @@ import streaming.graph.nodes._
 import streaming.graph.nodes.types.{Node, OneToMultiNode, OneToOneNode}
 
 
-class Stream(val nodes: Vector[Node]) {
+class Graph(val nodes: Vector[Node]) {
 
-  private def addOneToOne(newNode: OneToOneNode): Stream = {
+  private def addOneToOne(newNode: OneToOneNode): Graph = {
     nodes match {
       case _ :+ last =>
         newNode.prev = last
-        Stream(nodes :+ newNode)
+        Graph(nodes :+ newNode)
       case _ =>
-        Stream(nodes :+ newNode)
+        Graph(nodes :+ newNode)
     }
   }
 
-  def map(parallelism: Int, f: (String, String) => (String, String)): Stream =
+  def map(parallelism: Int, f: (String, String) => (String, String)): Graph = {
     addOneToOne(MapNode(parallelism, f))
+  }
 
-  def flatMap(parallelism: Int, f: (String, String) => Seq[(String, String)]): Stream =
+  def flatMap(parallelism: Int, f: (String, String) => Seq[(String, String)]): Graph = {
     addOneToOne(FlatMapNode(parallelism, f))
+  }
 
-  def filter(parallelism: Int, f: (String, String) => Boolean): Stream =
+  def filter(parallelism: Int, f: (String, String) => Boolean): Graph = {
     addOneToOne(FilterNode(parallelism, f))
+  }
 
-  def aggregate(parallelism: Int, f: Seq[(String, String)] => (String, String), toAccumulate: Int): Stream =
+  def aggregate(parallelism: Int, f: Seq[(String, String)] => (String, String), toAccumulate: Int): Graph = {
     addOneToOne(AggregateNode(parallelism, f, toAccumulate))
+  }
 
-  def splitThenMerge(subStreams: Seq[Stream], splitParallelism: Int, mergeParallelism: Int): Stream = {
+  def splitThenMerge(subStreams: Seq[Graph], splitParallelism: Int, mergeParallelism: Int): Graph = {
     val numOfSplit = subStreams.size
     val splitNode = SplitNode(splitParallelism, numOfSplit, subStreams)
     val mergeNode = MergeNode(mergeParallelism, numOfSplit)
@@ -46,18 +50,20 @@ class Stream(val nodes: Vector[Node]) {
         }
 
         val lastNode = subStream.nodes.last
-        mergeNode.prevs :+ lastNode
+        mergeNode.prevs = mergeNode.prevs :+ lastNode
     }
 
-    Stream(nodes :+ splitNode :+ mergeNode)
+    if (nodes.nonEmpty) {
+      splitNode.prev = nodes.last
+    }
+
+    Graph(nodes :+ splitNode :+ mergeNode)
   }
-
-
 
 }
 
-object Stream {
-  def createFromDefaultSource(): Stream = new Stream(Vector())
+object Graph {
+  def createFromDefaultSource(): Graph = new Graph(Vector())
 
-  def apply(nodes: Vector[Node]): Stream = new Stream(nodes)
+  def apply(nodes: Vector[Node]): Graph = new Graph(nodes)
 }

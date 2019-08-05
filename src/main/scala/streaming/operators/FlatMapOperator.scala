@@ -84,17 +84,16 @@ class FlatMapOperator(
         if (t.offset == expectedOffset) {
 
           val newTuples = f(t.key, t.value)
-          val tuplesWithIndices = newTuples.zipWithIndex
 
-          tuplesWithIndices.foreach {
-            case (newTuple, i) =>
+          newTuples.foreach {
+            newTuple =>
               val downStreamOp = downStreams(newTuple._1.hashCode() % downStreams.size)
               val newOffset = downOffsets(downStreamOp)
 
-              val outTuple = Tuple(newTuple._1, newTuple._2, newOffset + i)
+              val outTuple = Tuple(newTuple._1, newTuple._2, newOffset)
               downStreamOp ! outTuple
 
-              downOffsets = downOffsets.updated(downStreamOp, newOffset + tuplesWithIndices.size)
+              downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
 
               log.info(s"Sent $outTuple to $downStreamOp")
           }

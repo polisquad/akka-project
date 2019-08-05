@@ -3,7 +3,7 @@ package streaming
 import akka.actor.SupervisorStrategy.{Stop}
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
 import streaming.operators.common.Messages._
-import streaming.graph.{GraphBuilder, Stream}
+import streaming.graph.{GraphBuilder, Graph}
 
 import scala.concurrent.duration._
 import java.util.UUID.randomUUID
@@ -15,7 +15,7 @@ import streaming.operators.SourceOperator.{RestartJob, StartJob}
 // TODO test, test, test, test, test....
 // TODO test different kind of topology
 // TODO better to encapsulate state into behavior rather than using vars everywhere
-class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging with Timers {
+class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with Timers {
   import MasterNode._
   import context.dispatcher
 
@@ -24,7 +24,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
   var lastValidSnapshot: String = _
   var snapshotToAck: String = _
   var children: Children = _
-  var graph: Stream = _ // TODO change also the name Stream to graph
+  var graph: Graph = _
   var scheduledSnapshot: Cancellable = Cancellable.alreadyCancelled
 
   var stopped: Int = 0
@@ -165,7 +165,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
     }
 
   def createTopology(): Unit = {
-    val graphBuilder = GraphBuilder(streamBuilder())
+    val graphBuilder = GraphBuilder(graphBuider())
     val graphInfo = graphBuilder.initializeGraph(self)
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
@@ -175,7 +175,7 @@ class MasterNode(streamBuilder: () => Stream) extends Actor with ActorLogging wi
   }
 
   def restoreTopology(lastValidSnapshot: String): Unit = {
-    val graphBuilder = GraphBuilder(streamBuilder())
+    val graphBuilder = GraphBuilder(graphBuider())
     val graphInfo = graphBuilder.restoreGraph(self, lastValidSnapshot)
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
@@ -202,7 +202,7 @@ object MasterNode {
   case object RestoreSnapshotFailure
   final case class SnapshotDone(uuid: String)
 
-  def props(streamBuilder: () => Stream) : Props = Props(new MasterNode(streamBuilder))
+  def props(graphBuilder: () => Graph) : Props = Props(new MasterNode(graphBuilder))
 
 
   case class Children(source: ActorRef, operators: Set[ActorRef], sink: ActorRef) {

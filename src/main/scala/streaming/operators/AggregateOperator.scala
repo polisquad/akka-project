@@ -56,7 +56,7 @@ class AggregateOperator(
 
       Future {
         // Initial starting snapshot
-        snapshot()
+        snapshot("start")
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -144,7 +144,7 @@ class AggregateOperator(
 
     case TakeSnapshot(uuid) =>
       Future {
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! SnapshotTaken(uuid)
         case Failure(_) => self ! SnapshotFailed

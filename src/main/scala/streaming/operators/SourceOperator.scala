@@ -15,7 +15,6 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
   import SourceOperator._
   import context.dispatcher
 
-  // TODO
   var data: List[(String, String)] = List(
     ("a", "ao"),
     ("b", "bau"),
@@ -121,7 +120,8 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
 
             self ! Produce
 
-          case Nil => //TODO}
+          case Nil =>
+            self ! Produce
         }
       }
 
