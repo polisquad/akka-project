@@ -13,3 +13,19 @@ abstract class Node(val parallelism: Int) {
   def deployed: Vector[ActorRef] = _deployed
   def deployed_=(deployed: Vector[ActorRef]): Unit = _deployed = deployed
 }
+
+object Node {
+
+  object Counter {
+    var c: Long = -1
+
+    def getNew(): Long = {
+      c += 1
+      c
+    }
+  }
+
+  def generateName(name: String, parallelIndex: Int): String = {
+    f"${Counter.getNew()}-$name-$parallelIndex"
+  }
+}

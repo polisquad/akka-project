@@ -4,15 +4,15 @@ import streaming.graph.nodes._
 import streaming.graph.nodes.types.{Node, OneToMultiNode, OneToOneNode}
 
 
-class Graph(val nodes: Vector[Node]) {
+class Graph(val nodes: Vector[Node], val source: String) {
 
   private def addOneToOne(newNode: OneToOneNode): Graph = {
     nodes match {
       case _ :+ last =>
         newNode.prev = last
-        Graph(nodes :+ newNode)
+        Graph(nodes :+ newNode, source)
       case _ =>
-        Graph(nodes :+ newNode)
+        Graph(nodes :+ newNode, source)
     }
   }
 
@@ -57,13 +57,15 @@ class Graph(val nodes: Vector[Node]) {
       splitNode.prev = nodes.last
     }
 
-    Graph(nodes :+ splitNode :+ mergeNode)
+    Graph(nodes :+ splitNode :+ mergeNode, source)
   }
 
 }
 
 object Graph {
-  def createFromDefaultSource(): Graph = new Graph(Vector())
+  def createFromDefaultSource(): Graph = new Graph(Vector(), "")
 
-  def apply(nodes: Vector[Node]): Graph = new Graph(nodes)
+  def fromFileSource(fileName: String): Graph = new Graph(Vector(), fileName)
+
+  def apply(nodes: Vector[Node], source: String): Graph = new Graph(nodes, source)
 }

@@ -1,5 +1,7 @@
 package streaming.operators
 
+import java.io.RandomAccessFile
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
 import streaming.MasterNode
 import streaming.MasterNode.{JobRestarted, JobStarted}
@@ -11,16 +13,11 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 // TODO refactor to generalize
-class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
+class SourceOperator(downStreams: Vector[ActorRef], source: String) extends Actor with ActorLogging with Stash with Timers {
   import SourceOperator._
   import context.dispatcher
 
-  var data: List[(String, String)] = List(
-    ("a", "ao"),
-    ("b", "bau"),
-    ("c", "ciao"),
-    ("z", "zeus")
-  )
+  var data: RandomAccessFile = _
 
   var offset: Long = 0
 
@@ -103,25 +100,29 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
       if (takingSnapshot) {
         stash()
       } else {
-        data match {
-          case head :: tail =>
-            val downStreamOp = downStreams(head._1.hashCode() % downStreams.size)
+        readNext() match {
+          case Some((key, value)) =>
+            val downStreamOp = downStreams(key.hashCode() % downStreams.size)
             val newOffset = downOffsets(downStreamOp)
 
-            val outTuple = Tuple(head._1, head._2, newOffset)
+            val outTuple = Tuple(key, value, newOffset)
 
             downStreamOp ! outTuple
 
-            data = tail
             log.info(s"Producing: $outTuple")
 
             downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
-            offset += 1
-
             self ! Produce
 
-          case Nil =>
-            self ! Produce
+          case None =>
+            // Stream of data has been exhausted
+            data.close()
+            data = null
+
+            // Schedule a produce later in time to see if there is new data to be processed
+            context.system.scheduler.scheduleOnce(100 millis) {
+              self ! Produce
+            }
         }
       }
 
@@ -166,11 +167,28 @@ class SourceOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogg
 
   }
 
+  def readNext(): Option[(String, String)] = {
+    if (data == null) {
+      data = new RandomAccessFile(source, "r")
+    }
+
+    if (offset < data.length()) {
+      data.seek(offset)
+      val line = data.readLine()
+      val lineSplit = line.split(",")
+
+      offset += line.length + 1
+      Some((lineSplit(0), lineSplit(1)))
+    } else {
+      None
+    }
+  }
+
 }
 
 object SourceOperator {
   val MarkersLostTimer = "MarkersLost"
-  def props(downStreams: Vector[ActorRef]): Props = Props(new SourceOperator(downStreams))
+  def props(downStreams: Vector[ActorRef], source: String): Props = Props(new SourceOperator(downStreams, source))
 
   case object Produce
   case object InitializeSource

@@ -85,7 +85,7 @@ class FilterOperator(
         if (t.offset == expectedOffset) {
           val filtered = f(t.key, t.value)
 
-          if (!filtered) {
+          if (filtered) {
 
             val downStreamOp = downStreams(t.key.hashCode() % downStreams.size)
             val newOffset = downOffsets(downStreamOp)
