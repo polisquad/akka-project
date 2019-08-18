@@ -1,40 +1,32 @@
 package streaming
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import streaming.graph.Graph
 
 object Try {
 
-  def someStream(): Graph = {
-
+  def someGraph(): Graph = {
     val addQuestionMarks: Graph =
       Graph
         .createFromDefaultSource()
-        .map(2, (s1, s2) => {
-          val x = new scala.util.Random().nextFloat()
-          if (x > 0.5) {
-            (s1, s2 + "???")
-          } else {
-            throw new Exception("Failed!")
-          }
-        })
+        .map(parallelism = 2, (s1, s2) => (s1, s2 + "???"))
 
     val addExclamationPoints: Graph =
-      Graph.
-        createFromDefaultSource()
-        .map(2, (s1, s2) => (s1, s2 + "!!!"))
-
+      Graph
+        .createFromDefaultSource()
+        .map(2, (key, value) => (key, value + "!!!"))
 
     Graph
-      .createFromDefaultSource()
-     // .filter(2, (s1, s2) => s1 != "z")
-      .splitThenMerge(Vector(addExclamationPoints, addQuestionMarks), 4, 2)
-      .map(5, (s1, s2) => (s1, s2))
+      .fromFileSource("/Users/lpraat/develop/akka-project/prova.txt")
+      .splitThenMerge(Vector(addExclamationPoints, addQuestionMarks), 2, 2)
+      .toSink("/Users/lpraat/develop/akka-project/results.txt")
+     // .filter(2, (key, value) => value.length() < 10)
   }
 
   def main(args: Array[String]): Unit = {
     val system = ActorSystem("prova")
-    val masterNode = system.actorOf(MasterNode.props(someStream), "JobMaster")
+    val masterNode: ActorRef = system.actorOf(MasterNode.props(someGraph), "JobMaster")
+
 
     masterNode ! MasterNode.CreateTopology
   }

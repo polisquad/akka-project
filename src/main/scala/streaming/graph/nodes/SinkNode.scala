@@ -4,15 +4,15 @@ import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToZero
 import streaming.operators.SinkOperator
 
-class SinkNode extends OneToZero(1) {
+class SinkNode(sink: String) extends OneToZero(1) {
 
   override def deploy()(implicit context: ActorContext): Vector[ActorRef] = {
     (for (i <- 1 to parallelism)
-      yield context.actorOf(SinkOperator.props(), generateName("Sink", i))).toVector
+      yield context.actorOf(SinkOperator.props(sink), generateName("Sink", i))).toVector
   }
 }
 
 
 object SinkNode {
-  def apply(): SinkNode = new SinkNode()
+  def apply(sink: String): SinkNode = new SinkNode(sink)
 }

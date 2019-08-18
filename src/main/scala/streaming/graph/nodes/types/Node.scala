@@ -2,7 +2,7 @@ package streaming.graph.nodes.types
 
 import akka.actor.{ActorContext, ActorRef}
 
-abstract class Node(val parallelism: Int) {
+abstract class Node(val parallelism: Int) extends Serializable {
   protected var _deployed: Vector[ActorRef] = Vector()
 
   def backWard(downStreams: Vector[ActorRef])(implicit context: ActorContext): Unit

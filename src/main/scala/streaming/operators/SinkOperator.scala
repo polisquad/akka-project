@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 // TODO refactor to generalize
-class SinkOperator extends Actor with ActorLogging with Stash with Timers {
+class SinkOperator(sink: String) extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -146,7 +146,7 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
   def writeResult(value: String): Unit = {
     if (resultFile == null) {
       // There is no result file yet
-      resultFile = new RandomAccessFile("/tmp/result.txt", "rw")
+      resultFile = new RandomAccessFile(sink, "rw")
     }
 
     resultFile.seek(filePointer)
@@ -159,5 +159,5 @@ class SinkOperator extends Actor with ActorLogging with Stash with Timers {
 }
 
 object SinkOperator {
-  def props(): Props = Props(new SinkOperator)
+  def props(sink: String): Props = Props(new SinkOperator(sink))
 }

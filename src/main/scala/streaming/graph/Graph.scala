@@ -4,15 +4,15 @@ import streaming.graph.nodes._
 import streaming.graph.nodes.types.{Node, OneToMultiNode, OneToOneNode}
 
 
-class Graph(val nodes: Vector[Node], val source: String) {
+class Graph(val nodes: Vector[Node], val source: String, val sink: String) extends Serializable {
 
   private def addOneToOne(newNode: OneToOneNode): Graph = {
     nodes match {
       case _ :+ last =>
         newNode.prev = last
-        Graph(nodes :+ newNode, source)
+        Graph(nodes :+ newNode, source, sink)
       case _ =>
-        Graph(nodes :+ newNode, source)
+        Graph(nodes :+ newNode, source, sink)
     }
   }
 
@@ -57,15 +57,19 @@ class Graph(val nodes: Vector[Node], val source: String) {
       splitNode.prev = nodes.last
     }
 
-    Graph(nodes :+ splitNode :+ mergeNode, source)
+    Graph(nodes :+ splitNode :+ mergeNode, source, sink)
+  }
+
+  def toSink(sink: String): Graph = {
+    Graph(nodes, source, sink)
   }
 
 }
 
 object Graph {
-  def createFromDefaultSource(): Graph = new Graph(Vector(), "")
+  def createFromDefaultSource(): Graph = new Graph(Vector(), "", "")
 
-  def fromFileSource(fileName: String): Graph = new Graph(Vector(), fileName)
+  def fromFileSource(fileName: String): Graph = new Graph(Vector(), fileName, "")
 
-  def apply(nodes: Vector[Node], source: String): Graph = new Graph(nodes, source)
+  def apply(nodes: Vector[Node], source: String, sink: String): Graph = new Graph(nodes, source, sink)
 }

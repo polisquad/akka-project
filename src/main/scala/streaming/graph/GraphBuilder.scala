@@ -15,7 +15,7 @@ class GraphBuilder(graph: Graph)(implicit context: ActorContext) {
 
   private def deployGraph(graphCreator: ActorRef, deployMode: DeployMode): GraphInfo = {
     val source = SourceNode(graph.source)
-    val sink = SinkNode()
+    val sink = SinkNode(graph.sink)
 
     val firstNode = graph.nodes.head
     val lastNode = graph.nodes.last
