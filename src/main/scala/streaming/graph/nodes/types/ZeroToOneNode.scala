@@ -12,8 +12,8 @@ abstract class ZeroToOneNode(parallelism: Int) extends Node(parallelism) {
     deployed = deploy(downStreams)
   }
 
-  override def initialize(sender: ActorRef): Unit = {
-    deployed.foreach(_.tell(InitializeSource, sender))
+  override def initialize(sender: ActorRef, uuid: String): Unit = {
+    deployed.foreach(_.tell(InitializeSource(uuid), sender))
   }
 
   override def restore(sender: ActorRef, uuid: String): Unit = {

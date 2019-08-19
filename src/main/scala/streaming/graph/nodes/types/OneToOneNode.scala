@@ -13,9 +13,9 @@ abstract class OneToOneNode(parallelism: Int) extends Node(parallelism) {
     prev.backWard(deployed)
   }
 
-  override def initialize(sender: ActorRef): Unit = {
-    deployed.foreach(_.tell(Initializer(prev.getUpStreams), sender))
-    prev.initialize(sender)
+  override def initialize(sender: ActorRef, uuid: String): Unit = {
+    deployed.foreach(_.tell(Initializer(uuid, prev.getUpStreams), sender))
+    prev.initialize(sender, uuid)
   }
 
   override def restore(sender: ActorRef, uuid: String): Unit = {

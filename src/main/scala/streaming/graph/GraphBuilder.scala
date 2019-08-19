@@ -7,8 +7,8 @@ import streaming.graph.nodes.types.{OneToMultiNode, OneToOneNode}
 class GraphBuilder(graph: Graph)(implicit context: ActorContext) {
   import GraphBuilder._
 
-  def initializeGraph(graphCreator: ActorRef): GraphInfo =
-    deployGraph(graphCreator, Initialize)
+  def initializeGraph(graphCreator: ActorRef, uuid: String): GraphInfo =
+    deployGraph(graphCreator, Initialize(uuid))
 
   def restoreGraph(graphCreator: ActorRef, uuid: String): GraphInfo =
     deployGraph(graphCreator, Restore(uuid))
@@ -33,16 +33,16 @@ class GraphBuilder(graph: Graph)(implicit context: ActorContext) {
     sink.backWard(Vector())
 
     deployMode match {
-      case Initialize =>
-        initialize(graphCreator, source, sink)
+      case Initialize(uuid) =>
+        initialize(graphCreator, source, sink, uuid)
       case Restore(uuid) =>
         restore(graphCreator, source, sink, uuid)
     }
 
   }
 
-  private def initialize(graphCreator: ActorRef, source: SourceNode, sink: SinkNode): GraphInfo = {
-    sink.initialize(graphCreator)
+  private def initialize(graphCreator: ActorRef, source: SourceNode, sink: SinkNode, uuid: String): GraphInfo = {
+    sink.initialize(graphCreator, uuid)
     val (operators, numDeployed) = parseGraph(graph)
     GraphInfo(source.deployed(0), operators, sink.deployed(0), numDeployed)
   }
@@ -88,6 +88,6 @@ object GraphBuilder {
   final case class GraphInfo(source: ActorRef, operators: Set[ActorRef], sink: ActorRef, numDeployed: Int)
 
   sealed trait DeployMode
-  case object Initialize extends DeployMode
+  final case class Initialize(uuid: String) extends DeployMode
   final case class Restore(uuid: String) extends DeployMode
 }

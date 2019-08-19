@@ -12,7 +12,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO refactor to generalize
 class SinkOperator(sink: String) extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
@@ -49,12 +48,12 @@ class SinkOperator(sink: String) extends Actor with ActorLogging with Stash with
   }
 
   override def receive: Receive = {
-    case Initializer(upStreams) =>
+    case Initializer(uuid, upStreams) =>
       init(upStreams)
 
       Future {
         // Initial starting snapshot
-        snapshot("start")
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed

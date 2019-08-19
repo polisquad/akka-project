@@ -10,9 +10,9 @@ object Messages {
     override def hashCode(): Int = key.hashCode()
   }
 
-  final case class Initializer(upStreams: Vector[ActorRef])
+  final case class Initializer(uuid: String, upStreams: Vector[ActorRef])
 
-  final case class MultiInitializer(upStreams: Vector[Vector[ActorRef]])
+  final case class MultiInitializer(uuid: String, upStreams: Vector[Vector[ActorRef]])
 
   case object Initialized
 

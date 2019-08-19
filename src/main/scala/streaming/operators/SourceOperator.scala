@@ -50,12 +50,12 @@ class SourceOperator(downStreams: Vector[ActorRef], source: String) extends Acto
 
 
   override def receive: Receive = {
-    case InitializeSource =>
+    case InitializeSource(uuid) =>
       init()
 
       Future {
         // Initial starting snapshot
-        snapshot("start")
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -191,7 +191,7 @@ object SourceOperator {
   def props(downStreams: Vector[ActorRef], source: String): Props = Props(new SourceOperator(downStreams, source))
 
   case object Produce
-  case object InitializeSource
+  final case class InitializeSource(uuid: String)
   case object StartJob
   case object RestartJob
 }

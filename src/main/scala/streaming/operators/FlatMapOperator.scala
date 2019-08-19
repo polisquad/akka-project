@@ -8,7 +8,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO test
 class FlatMapOperator(
   f: (String, String) => Seq[(String, String)],
   downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
@@ -36,12 +35,12 @@ class FlatMapOperator(
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
-    case Initializer(upStreams) =>
+    case Initializer(uuid, upStreams) =>
       init(upStreams)
 
       Future {
         // Initial starting snapshot
-        snapshot("start")
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed

@@ -25,10 +25,10 @@ abstract class MultiToOneNode(parallelism: Int, multi: Int) extends Node(paralle
     }
   }
 
-  override def initialize(sender: ActorRef): Unit = {
+  override def initialize(sender: ActorRef, uuid: String): Unit = {
     val upStreams = gatherUpStreams(prevs, left, Vector())
-    deployed.foreach(_.tell(MultiInitializer(upStreams), sender))
-    prevs.foreach(_.initialize(sender))
+    deployed.foreach(_.tell(MultiInitializer(uuid, upStreams), sender))
+    prevs.foreach(_.initialize(sender, uuid))
   }
 
   override def restore(sender: ActorRef, uuid: String): Unit = {

@@ -9,7 +9,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO test
 class AggregateOperator(
     f: Seq[(String, String)] => (String, String),
     downStreams: Vector[ActorRef],
@@ -51,12 +50,12 @@ class AggregateOperator(
   }
 
   override def receive: Receive = {
-    case Initializer(upStreams) =>
+    case Initializer(uuid, upStreams) =>
       init(upStreams)
 
       Future {
         // Initial starting snapshot
-        snapshot("start")
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed

@@ -10,11 +10,7 @@ import java.util.UUID.randomUUID
 
 import streaming.operators.SourceOperator.{RestartJob, StartJob}
 
-
-// TODO test everything
-// TODO test, test, test, test, test....
-// TODO test different kind of topology
-// TODO better to encapsulate state into behavior rather than using vars everywhere
+// TODO refactor operators to remove duplicated code
 class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with Timers {
   import MasterNode._
   import context.dispatcher
@@ -49,7 +45,6 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
     case JobStarted =>
       if (sender() == children.source) {
         timers.cancel(DeployFailureTimer)
-        lastValidSnapshot = "start" // TODO change this and set to normal uuid?
         context.become(operative)
         self ! SetSnapshot
       }
@@ -166,7 +161,9 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
 
   def createTopology(): Unit = {
     val graphBuilder = GraphBuilder(graphBuider())
-    val graphInfo = graphBuilder.initializeGraph(self)
+
+    lastValidSnapshot = randomUUID().toString
+    val graphInfo = graphBuilder.initializeGraph(self, lastValidSnapshot)
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
     toInitialize = graphInfo.numDeployed

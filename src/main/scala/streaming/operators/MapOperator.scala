@@ -8,8 +8,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO refactor to generalize
-// TODO test
 class MapOperator(
     f: (String, String) => (String, String),
     downStreams: Vector[ActorRef]
@@ -38,12 +36,12 @@ class MapOperator(
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
-    case Initializer(upStreams) =>
+    case Initializer(uuid, upStreams) =>
       init(upStreams)
 
       Future {
         // Initial starting snapshot
-        snapshot("start")
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed

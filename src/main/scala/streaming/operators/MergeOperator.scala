@@ -8,9 +8,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO test
 class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
-  // TODO multi upstream to one downstream
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -36,12 +34,12 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends Actor with ActorLoggi
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
-    case MultiInitializer(upStreams) =>
+    case MultiInitializer(uuid, upStreams) =>
       init(upStreams)
 
       Future {
         // Initial starting snapshot
-        snapshot("start")
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed

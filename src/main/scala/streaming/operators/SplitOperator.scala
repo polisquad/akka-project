@@ -8,9 +8,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-// TODO test
 class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with ActorLogging with Stash with Timers {
-  // TODO one upstream multi downstream
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -28,21 +26,19 @@ class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with Ac
     blockedChannels = upStreams.map(x => x -> false).toMap
   }
 
-  def snapshot(): Unit =
-    // TODO
+  def snapshot(uuid: String): Unit =
     log.info("Snapshotting...")
 
   def restoreSnapshot(uuid: String): Unit =
-    // TODO
     log.info(s"Restoring snapshot ${uuid}...")
 
   override def receive: Receive = {
-    case Initializer(upStreams) =>
+    case Initializer(uuid, upStreams) =>
       init(upStreams)
 
       Future {
         // Initial starting snapshot
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
         case Failure(_) => self ! SnapshotFailed
@@ -124,7 +120,7 @@ class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with Ac
 
     case TakeSnapshot(uuid) =>
       Future {
-        snapshot()
+        snapshot(uuid)
       } onComplete {
         case Success(_) => self ! SnapshotTaken(uuid)
         case Failure(_) => self ! SnapshotFailed
