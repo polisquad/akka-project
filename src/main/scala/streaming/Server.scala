@@ -22,31 +22,49 @@ object Server extends Directives with JsonSupport {
     var jobs = new HashMap[JobDescription, ActorRef]
 
     lazy val routes: Route =
-      path("jobs") {
+      pathPrefix("jobs") {
         get {
           var ls = new ConcurrentLinkedDeque[JobDescription]()
-            jobs.foreach(job => {
-              ls.add(job._1)
-            })
+          jobs.foreach(job => {
+            ls.add(job._1)
+          })
           complete(ls.asScala)
         } ~
-        post {
-          entity(as[JobDescription]) { job =>
-            val jobName = job.name
-            val graphPath = job.path
+          post {
+            entity(as[JobDescription]) { job =>
+              val jobName = job.name
+              val graphPath = job.path
 
-            val graph = readGraph(graphPath)
-            val newMasterNode: ActorRef = system.actorOf(MasterNode.props(() => graph), jobName)
+              val graph = readGraph(graphPath)
+              val newMasterNode: ActorRef = system.actorOf(MasterNode.props(() => graph), jobName)
+              val jobDescription = JobDescription(jobName, graphPath)
+              val result = jobs.filter(_._1.name == jobName)
+              if (result.isEmpty) {
+                jobs = jobs.updated(jobDescription, newMasterNode)
+                newMasterNode ! MasterNode.CreateTopology
+              } // do not start new job if it already exists
 
-            val jobDescription = JobDescription(jobName, graphPath)
-            jobs = jobs.updated(jobDescription, newMasterNode)
-            newMasterNode ! MasterNode.CreateTopology
-            complete(jobDescription)
+              complete(jobDescription)
+            }
+          } ~
+          delete {
+            pathEnd {
+              complete("Specify job to kill")
+            } ~
+              path(Remaining) { name =>
+                val result = jobs.filter(_._1.name == name)
+                if (result.nonEmpty) {
+                  val jobDescription = result.head._1
+                  jobs = jobs - jobDescription
+                  // todo kill the job
+                  complete {
+                    jobDescription
+                  }
+                } else {
+                  complete ("No jobs with name " + name + "found")
+                }
+              }
           }
-        } ~
-        delete {
-          complete("Delete endpoint")
-        }
       }
 
     Http().bindAndHandle(routes, "localhost", 8080)
