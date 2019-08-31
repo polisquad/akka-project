@@ -2,8 +2,10 @@
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.5.21",
   "com.typesafe.akka" %% "akka-testkit" % "2.5.21" % Test,
-  "com.typesafe.akka" %% "akka-http"   % "10.1.9",
-  "com.typesafe.akka" %% "akka-stream" % "2.5.25"
+  "com.typesafe.akka" %% "akka-http" % "10.1.9",
+  "com.typesafe.akka" %% "akka-stream" % "2.5.25",
+  "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.3",
+  "io.spray" %% "spray-json" % "1.3.4"
 )
 
 // Scala test
