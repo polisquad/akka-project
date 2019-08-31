@@ -2,7 +2,7 @@ package streaming
 
 import java.util.concurrent.ConcurrentLinkedDeque
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Kill, PoisonPill}
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import akka.http.scaladsl.server.Directives._
@@ -56,12 +56,12 @@ object Server extends Directives with JsonSupport {
                 if (result.nonEmpty) {
                   val jobDescription = result.head._1
                   jobs = jobs - jobDescription
-                  // todo kill the job
+                  result.head._2 ! PoisonPill  // kill the job
                   complete {
                     jobDescription
                   }
                 } else {
-                  complete ("No jobs with name " + name + "found")
+                  complete ("No jobs with name " + name + " found")
                 }
               }
           }
