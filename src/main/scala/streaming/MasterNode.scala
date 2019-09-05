@@ -10,7 +10,6 @@ import java.util.UUID.randomUUID
 
 import streaming.operators.types.ZeroToOneOperator.{RestartJob, StartJob}
 
-// TODO refactor operators to remove duplicated code
 class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with Timers {
   import MasterNode._
   import context.dispatcher
@@ -144,18 +143,17 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
     case SetSnapshot =>
       if (!scheduledSnapshot.isCancelled) scheduledSnapshot.cancel()
 
-      scheduledSnapshot = context.system.scheduler.scheduleOnce(10 seconds) {
+      scheduledSnapshot = context.system.scheduler.scheduleOnce(Config.SnapshotTime) {
 
-        // TODO change this with a message like StartSnapshot
         val newSnapshot = randomUUID().toString
         children.source ! Marker(newSnapshot, 0)
-        timers.startSingleTimer(SnapshotTimer, RestoreLastSnapshot, 10 seconds)
+        timers.startSingleTimer(SnapshotTimer, RestoreLastSnapshot, Config.SnapshotTimeout)
         snapshotToAck = newSnapshot
       }
   }
 
   override def supervisorStrategy: SupervisorStrategy =
-    AllForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 5 seconds) {
+    AllForOneStrategy(Config.MaxNrOfRetries, Config.WithinTimeRange) {
       case _ => Stop
     }
 
@@ -167,7 +165,7 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
     toInitialize = graphInfo.numDeployed
-    timers.startSingleTimer(DeployFailureTimer, DeployFailure, 10 seconds)
+    timers.startSingleTimer(DeployFailureTimer, DeployFailure, Config.DeployTimeout)
     stopped = 0
   }
 
@@ -177,7 +175,7 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
 
     children = Children(graphInfo.source, graphInfo.operators, graphInfo.sink)
     toInitializeFromSnapshot = graphInfo.numDeployed
-    timers.startSingleTimer(RestoreSnapshotFailureTimer, RestoreSnapshotFailure, 10 seconds)
+    timers.startSingleTimer(RestoreSnapshotFailureTimer, RestoreSnapshotFailure, Config.RestoreSnapshotTimeout)
     stopped = 0
   }
 
@@ -200,7 +198,6 @@ object MasterNode {
   final case class SnapshotDone(uuid: String)
 
   def props(graphBuilder: () => Graph) : Props = Props(new MasterNode(graphBuilder))
-
 
   case class Children(source: ActorRef, operators: Set[ActorRef], sink: ActorRef) {
     def watchAll()(implicit context: ActorContext): Unit = {

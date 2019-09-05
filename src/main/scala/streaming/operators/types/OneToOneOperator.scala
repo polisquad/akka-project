@@ -12,6 +12,7 @@ import streaming.operators.common.Messages._
 import scala.util.Failure
 import streaming.MasterNode
 import scala.concurrent.duration._
+import streaming.Config
 
 abstract class OneToOneOperator(
   downStreams: Vector[ActorRef]
@@ -135,7 +136,7 @@ abstract class OneToOneOperator(
       }
       markersToAck = downStreams.size
       uuidToAck = uuid
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds)
+      timers.startSingleTimer("MarkersLostTimer", MarkersLost, Config.MarkersTimeout)
 
     case MarkersLost =>
       throw new Exception("Markers have been lost")

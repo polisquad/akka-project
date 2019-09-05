@@ -11,6 +11,7 @@ import streaming.operators.common.State
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import streaming.Config
 
 // Represents a generic Source Operator
 abstract class ZeroToOneOperator(
@@ -133,7 +134,7 @@ abstract class ZeroToOneOperator(
       }
       markersToAck = downStreams.length
       uuidToAck = uuid
-      timers.startSingleTimer(MarkersLostTimer, MarkersLost, 5 seconds)
+      timers.startSingleTimer(MarkersLostTimer, MarkersLost, Config.MarkersTimeout)
 
     case MarkersLost =>
       throw new Exception("Markers have been lost")

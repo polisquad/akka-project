@@ -11,6 +11,7 @@ import streaming.operators.common.State
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import streaming.Config
 
 abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
@@ -100,7 +101,7 @@ abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with
     case SnapshotTaken(uuid) =>
       context.parent ! SnapshotDone(uuid)
       uuidToAck = uuid
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds)
+      timers.startSingleTimer("MarkersLostTimer", MarkersLost, Config.MarkersTimeout)
 
     case MarkerAck(uuid) =>
       timers.cancel("MarkersLostTimer")

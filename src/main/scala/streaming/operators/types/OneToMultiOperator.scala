@@ -7,6 +7,7 @@ import streaming.operators.common.Messages._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import streaming.Config
 
 abstract class OneToMultiOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
@@ -126,8 +127,8 @@ abstract class OneToMultiOperator(downStreams: Vector[Vector[ActorRef]]) extends
 
       markersToAck = flattenedDownStreams.size
       uuidToAck = uuid
-      timers.startSingleTimer("MarkersLostTimer", MarkersLost, 5 seconds) // TODO remove hardcoded
-                                                                                         // timeouts everywhere
+      timers.startSingleTimer("MarkersLostTimer", MarkersLost, Config.MarkersTimeout)
+
 
     case MarkersLost =>
       throw new Exception("Markers have been lost")
