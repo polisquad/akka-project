@@ -26,6 +26,9 @@ class SinkOperator(sink: String) extends Actor with ActorLogging with Stash with
 
   var resultFile: RandomAccessFile = _
 
+  // Get the separator length on the OS on which the sink is running
+  val SeparatorLength = System.lineSeparator().length()
+
   def snapshot(uuid: String): Unit = {
     log.info(s"Snapshotting ${uuid}...")
 
@@ -150,9 +153,9 @@ class SinkOperator(sink: String) extends Actor with ActorLogging with Stash with
 
     resultFile.seek(filePointer)
     resultFile.writeBytes(value)
-    resultFile.writeBytes("\n")
+    resultFile.writeBytes(System.lineSeparator())
 
-    filePointer += value.length + 1
+    filePointer += value.length + SeparatorLength
   }
 
 }

@@ -27,6 +27,8 @@ class SourceOperator(downStreams: Vector[ActorRef], source: String) extends Acto
   var markersToAck: Int = _
   var uuidToAck: String = _
 
+  // Get the separator length on the OS on which the source is running
+  val SeparatorLength = System.lineSeparator().length()
 
   def snapshot(uuid: String): Unit = {
     log.info(s"Snapshotting ${uuid}...")
@@ -177,7 +179,8 @@ class SourceOperator(downStreams: Vector[ActorRef], source: String) extends Acto
       val line = data.readLine()
       val lineSplit = line.split(",")
 
-      offset += line.length + 1
+      offset += line.length + SeparatorLength
+
       Some((lineSplit(0), lineSplit(1)))
     } else {
       None
