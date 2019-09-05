@@ -30,7 +30,7 @@ class AggregateOperator(
     log.info(f"Restored accumulated: ${accumulated}")
   }
 
-  override def processTuple(t: Messages.Tuple, expectedOffset: Long): Unit = {
+  override def processTuple(t: Tuple): Unit = {
     if (accumulated.length < toAccumulate) {
       // accumulate
       accumulated = accumulated :+ (t.key, t.value)
@@ -50,7 +50,7 @@ class AggregateOperator(
       log.info(s"Sent $outTuple to $downStreamOp")
     }
 
-    upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
+    upOffsets = upOffsets.updated(sender(), t.offset + 1)
   }
 }
 

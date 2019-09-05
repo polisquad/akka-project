@@ -9,7 +9,7 @@ class MapOperator(
   downStreams: Vector[ActorRef]
 ) extends OneToOneOperator(downStreams) {
 
-  override def processTuple(t: Tuple, expectedOffset: Long) = {
+  override def processTuple(t: Tuple) = {
     val (newKey, newValue) = f(t.key, t.value)
 
     val downStreamOp = downStreams(newKey.hashCode() % downStreams.size)
@@ -18,7 +18,7 @@ class MapOperator(
     val outTuple = Tuple(newKey, newValue, newOffset)
     downStreamOp ! outTuple
 
-    upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
+    upOffsets = upOffsets.updated(sender(), t.offset + 1)
     downOffsets = downOffsets.updated(downStreamOp, newOffset + 1)
 
     log.info(s"Sent $outTuple to $downStreamOp")

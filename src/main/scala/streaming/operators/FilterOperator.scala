@@ -9,7 +9,7 @@ class FilterOperator(
   downStreams: Vector[ActorRef]
 ) extends OneToOneOperator(downStreams) {
 
-  override def processTuple(t: Messages.Tuple, expectedOffset: Long): Unit = {
+  override def processTuple(t: Messages.Tuple): Unit = {
     val filtered = f(t.key, t.value)
 
     if (filtered) {
@@ -24,7 +24,7 @@ class FilterOperator(
       log.info(s"Sent $outTuple to $downStreamOp")
     }
 
-    upOffsets = upOffsets.updated(sender(), expectedOffset + 1)
+    upOffsets = upOffsets.updated(sender(), t.offset + 1)
   }
 }
 

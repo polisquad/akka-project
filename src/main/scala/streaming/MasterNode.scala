@@ -8,7 +8,7 @@ import streaming.graph.{GraphBuilder, Graph}
 import scala.concurrent.duration._
 import java.util.UUID.randomUUID
 
-import streaming.operators.SourceOperator.{RestartJob, StartJob}
+import streaming.operators.types.ZeroToOneOperator.{RestartJob, StartJob}
 
 // TODO refactor operators to remove duplicated code
 class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with Timers {

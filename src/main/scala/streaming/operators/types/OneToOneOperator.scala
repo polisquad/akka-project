@@ -41,7 +41,7 @@ abstract class OneToOneOperator(
     log.info(s"Restoring snapshot ${uuid} ...")
 
 
-  def processTuple(t: Tuple, expectedOffset: Long): Unit
+  def processTuple(t: Tuple): Unit
 
 
   override def receive: Receive = {
@@ -93,7 +93,7 @@ abstract class OneToOneOperator(
         val expectedOffset = upOffsets(sender())
 
         if (t.offset == expectedOffset) {
-          processTuple(t, expectedOffset)
+          processTuple(t)
         } else {
           throw new Exception(s"Tuple id was not the expected one. Expected $expectedOffset, Received: ${t.offset}")
         }
