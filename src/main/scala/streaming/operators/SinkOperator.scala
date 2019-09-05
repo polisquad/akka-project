@@ -6,7 +6,7 @@ import java.io.RandomAccessFile
 import streaming.operators.common.State
 import streaming.operators.common.Messages.Tuple
 
-
+// Text source operator
 class SinkOperator(sink: String) extends OneToZeroOperator {
 
   var resultFile: RandomAccessFile = _
