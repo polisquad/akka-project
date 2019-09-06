@@ -6,11 +6,7 @@ import streaming.operators.common.State
 import streaming.operators.common.Messages
 import streaming.operators.common.Messages.Tuple
 
-class AggregateOperator[I, O](
-  f: Seq[(String, I)] => (String, O),
-  downStreams: Vector[ActorRef],
-  toAccumulate: Int
-) extends OneToOneOperator[I, O](downStreams) {
+class AggregateOperator[I,O](f: Seq[(String, I)] => (String, O), downStreams: Vector[ActorRef], toAccumulate: Int) extends OneToOneOperator[I,O](downStreams) {
 
   var accumulated: Vector[(String, I)] = Vector()
 
@@ -54,6 +50,6 @@ class AggregateOperator[I, O](
 }
 
 object AggregateOperator {
-  def props[I, O](f: Seq[(String, I)] => (String, O), downStreams: Vector[ActorRef], toAccumulate: Int): Props =
+  def props[I,O](f: Seq[(String, I)] => (String, O), downStreams: Vector[ActorRef], toAccumulate: Int): Props =
     Props(new AggregateOperator(f, downStreams, toAccumulate))
 }

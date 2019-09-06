@@ -4,10 +4,7 @@ import streaming.operators.types.OneToOneOperator
 import streaming.operators.common.Messages.Tuple
 import akka.actor.{ActorRef, Props}
 
-class FilterOperator[I](
-  f: (String, I) => Boolean,
-  downStreams: Vector[ActorRef]
-) extends OneToOneOperator[I, I](downStreams) {
+class FilterOperator[I](f: (String, I) => Boolean, downStreams: Vector[ActorRef]) extends OneToOneOperator[I, I](downStreams) {
 
   override def processTuple(t: Tuple[I]): Unit = {
     val filtered = f(t.key, t.value)
