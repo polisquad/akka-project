@@ -24,7 +24,7 @@ Each graph has its corresponding Master Node. The Master Node parses the user-de
   <img width="70%" height="70%" src="https://i.imgur.com/RW4KmjP.png">
 </p>
 
-During the graph execution a consistent global state of the system is taken through a distributed snapshot initiated by the Master Node. An eventual error occurring in one of the operators is propagated, thanks to the Akka hierarchy, to the Master Node, which restores the last valid snapshot.
+During the graph execution a consistent global state of the system is saved through a distributed snapshot initiated periodically by the Master Node. An eventual error occurring in one of the operators is propagated, thanks to the Akka hierarchy, to the Master Node, which restores the last valid snapshot.
 For more information regarding fault tolerance see the corresponding section below.
 
 The Master Node spawns N actors for each operator according the parallelism level (N = parallelism level). The data, flowing from the source to the sink, is hash-partitioned by Key among the different actors.
