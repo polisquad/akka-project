@@ -4,7 +4,7 @@ import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.FlatMapOperator
 
-class FlatMapNode(parallelism: Int, f: (String, String) => Seq[(String, String)]) extends OneToOneNode(parallelism) {
+class FlatMapNode[I, O](parallelism: Int, f: (String, I) => Seq[(String, O)]) extends OneToOneNode(parallelism) {
 
   override def deploy(downStreams: Vector[ActorRef])(implicit context: ActorContext): Vector[ActorRef] =
     (for (i <- 1 to parallelism)
@@ -13,7 +13,7 @@ class FlatMapNode(parallelism: Int, f: (String, String) => Seq[(String, String)]
 
 object FlatMapNode {
 
-  def apply(parallelism: Int, f: (String, String) => Seq[(String, String)]): FlatMapNode =
+  def apply[I, O](parallelism: Int, f: (String, I) => Seq[(String, O)]): FlatMapNode[I, O] =
     new FlatMapNode(parallelism, f)
 
 }

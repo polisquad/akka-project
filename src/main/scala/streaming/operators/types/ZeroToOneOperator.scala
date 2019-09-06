@@ -47,7 +47,9 @@ abstract class ZeroToOneOperator(
         snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
-        case Failure(_) => self ! SnapshotFailed
+        case Failure(e) =>
+          log.info(f"Initial snapshot failed: ${e}")
+          self ! SnapshotFailed
       }
 
     // TODO change this message ?
@@ -58,7 +60,9 @@ abstract class ZeroToOneOperator(
         restoreSnapshot(uuid)
       } onComplete {
         case Success(_) => self ! RestoredSnapshot(uuid)
-        case Failure(_) => self ! RestoreSnapshotFailed
+        case Failure(e) =>
+          log.info(f"Restore snapshot failed: ${e}")
+          self ! RestoreSnapshotFailed
       }
 
     case Initialized =>

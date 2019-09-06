@@ -5,7 +5,7 @@ import streaming.graph.Graph
 import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToMultiNode
 
-class SplitNode(parallelism: Int, multi: Int, val subStreams: Seq[Graph]) extends OneToMultiNode(parallelism, multi) {
+class SplitNode[I](parallelism: Int, multi: Int, val subStreams: Seq[Graph]) extends OneToMultiNode(parallelism, multi) {
 
   override def deploy(downStreams: Vector[Vector[ActorRef]])(implicit context: ActorContext): Vector[ActorRef] = {
     (for (i <- 1 to parallelism)
@@ -14,6 +14,6 @@ class SplitNode(parallelism: Int, multi: Int, val subStreams: Seq[Graph]) extend
 }
 
 object SplitNode {
-  def apply(parallelism: Int, multi: Int, subStreams: Seq[Graph]): SplitNode =
+  def apply[I](parallelism: Int, multi: Int, subStreams: Seq[Graph]): SplitNode[I] =
     new SplitNode(parallelism, multi, subStreams)
 }

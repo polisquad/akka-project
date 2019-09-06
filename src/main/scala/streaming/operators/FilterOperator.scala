@@ -1,15 +1,15 @@
 package streaming.operators
 
 import streaming.operators.types.OneToOneOperator
-import streaming.operators.common.Messages
+import streaming.operators.common.Messages.Tuple
 import akka.actor.{ActorRef, Props}
 
-class FilterOperator(
-  f: (String, String) => Boolean,
+class FilterOperator[I](
+  f: (String, I) => Boolean,
   downStreams: Vector[ActorRef]
-) extends OneToOneOperator(downStreams) {
+) extends OneToOneOperator[I, I](downStreams) {
 
-  override def processTuple(t: Messages.Tuple): Unit = {
+  override def processTuple(t: Tuple[I]): Unit = {
     val filtered = f(t.key, t.value)
 
     if (filtered) {
@@ -29,6 +29,6 @@ class FilterOperator(
 }
 
 object FilterOperator {
-  def props(f: (String, String) => Boolean, downStreams: Vector[ActorRef]): Props =
+  def props[I](f: (String, I) => Boolean, downStreams: Vector[ActorRef]): Props =
     Props(new FilterOperator(f, downStreams))
 }

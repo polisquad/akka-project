@@ -4,7 +4,7 @@ import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.MapOperator
 import streaming.graph.nodes.types.Node._
 
-class MapNode(parallelism: Int, f: (String, String) => (String, String)) extends OneToOneNode(parallelism) {
+class MapNode[I, O](parallelism: Int, f: (String, I) => (String, O)) extends OneToOneNode(parallelism) {
 
   override def deploy(downStreams: Vector[ActorRef])(implicit context: ActorContext): Vector[ActorRef] = {
     (for (i <- 1 to parallelism)
@@ -13,6 +13,6 @@ class MapNode(parallelism: Int, f: (String, String) => (String, String)) extends
 }
 
 object MapNode {
-  def apply(parallelism: Int, f: (String, String) => (String, String)): MapNode =
+  def apply[I, O](parallelism: Int, f: (String, I) => (String, O)): MapNode[I, O] =
     new MapNode(parallelism, f)
 }

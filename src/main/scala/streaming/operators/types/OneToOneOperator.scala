@@ -14,7 +14,7 @@ import streaming.MasterNode
 import scala.concurrent.duration._
 import streaming.Config
 
-abstract class OneToOneOperator(
+abstract class OneToOneOperator[I, O](
   downStreams: Vector[ActorRef]
 ) extends Actor with ActorLogging with Stash with Timers {
 
@@ -42,7 +42,7 @@ abstract class OneToOneOperator(
     log.info(s"Restoring snapshot ${uuid} ...")
 
 
-  def processTuple(t: Tuple): Unit
+  def processTuple(t: Tuple[I]): Unit
 
 
   override def receive: Receive = {
@@ -54,7 +54,9 @@ abstract class OneToOneOperator(
         snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
-        case Failure(_) => self ! SnapshotFailed
+        case Failure(e) =>
+          log.info(f"Initial snapshot failed: ${e}")
+          self ! SnapshotFailed
       }
 
 
@@ -65,7 +67,9 @@ abstract class OneToOneOperator(
         restoreSnapshot(uuid)
       } onComplete {
         case Success(_) => self ! RestoredSnapshot(uuid)
-        case Failure(_) => self ! RestoreSnapshotFailed
+        case Failure(e) =>
+          log.info(f"Restore snapshot failed: ${e}")
+          self ! RestoreSnapshotFailed
       }
 
       case Initialized =>
@@ -85,7 +89,7 @@ abstract class OneToOneOperator(
 
 
   def operative: Receive = {
-    case t: Tuple =>
+    case t: Tuple[I] =>
       if (blockedChannels(sender())) {
         log.info("Stashing")
         stash()

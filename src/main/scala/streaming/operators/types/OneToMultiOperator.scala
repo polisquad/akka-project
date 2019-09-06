@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import streaming.Config
 
-abstract class OneToMultiOperator(downStreams: Vector[Vector[ActorRef]]) extends Actor with ActorLogging with Stash with Timers {
+abstract class OneToMultiOperator[I](downStreams: Vector[Vector[ActorRef]]) extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -42,7 +42,9 @@ abstract class OneToMultiOperator(downStreams: Vector[Vector[ActorRef]]) extends
         snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
-        case Failure(_) => self ! SnapshotFailed
+        case Failure(e) =>
+          log.info(f"Initial snapshot failed: ${e}")
+          self ! SnapshotFailed
       }
 
     case RestoreSnapshot(uuid, upStreams) =>
@@ -52,7 +54,9 @@ abstract class OneToMultiOperator(downStreams: Vector[Vector[ActorRef]]) extends
         restoreSnapshot(uuid)
       } onComplete {
         case Success(_) => self ! RestoredSnapshot(uuid)
-        case Failure(_) => self ! RestoreSnapshotFailed
+        case Failure(e) =>
+          log.info(f"Restore snapshot failed: ${e}")
+          self ! RestoreSnapshotFailed
       }
 
     case Initialized =>
@@ -70,10 +74,10 @@ abstract class OneToMultiOperator(downStreams: Vector[Vector[ActorRef]]) extends
       throw new Exception("Restore snapshot failed")
   }
 
-  def processTuple(t: Tuple): Unit
+  def processTuple(t: Tuple[I]): Unit
 
   def operative: Receive = {
-    case t: Tuple =>
+    case t: Tuple[I] =>
       if (blockedChannels(sender())) {
         log.info("Stashing")
         stash()

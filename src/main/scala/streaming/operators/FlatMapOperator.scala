@@ -2,15 +2,14 @@ package streaming.operators
 
 import akka.actor.{Props, ActorRef}
 import streaming.operators.types.OneToOneOperator
-import streaming.operators.common.Messages
 import streaming.operators.common.Messages.Tuple
 
-class FlatMapOperator(
-  f: (String, String) => Seq[(String, String)],
+class FlatMapOperator[I, O](
+  f: (String, I) => Seq[(String, O)],
   downStreams: Vector[ActorRef]
-) extends OneToOneOperator(downStreams) {
+) extends OneToOneOperator[I, O](downStreams) {
 
-  override def processTuple(t: Messages.Tuple): Unit = {
+  override def processTuple(t: Tuple[I]): Unit = {
     val newTuples = f(t.key, t.value)
 
     newTuples.foreach {
@@ -31,6 +30,6 @@ class FlatMapOperator(
 }
 
 object FlatMapOperator {
-  def props(f: (String, String) => Seq[(String, String)], downStreams: Vector[ActorRef]): Props =
+  def props[I, O](f: (String, I) => Seq[(String, O)], downStreams: Vector[ActorRef]): Props =
     Props(new FlatMapOperator(f, downStreams))
 }

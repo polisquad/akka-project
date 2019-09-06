@@ -16,26 +16,26 @@ class Graph(val nodes: Vector[Node], val source: String, val sink: String) exten
     }
   }
 
-  def map(parallelism: Int, f: (String, String) => (String, String)): Graph = {
-    addOneToOne(MapNode(parallelism, f))
+  def map[I, O](parallelism: Int, f: (String, I) => (String, O)): Graph = {
+    addOneToOne(MapNode[I, O](parallelism, f))
   }
 
-  def flatMap(parallelism: Int, f: (String, String) => Seq[(String, String)]): Graph = {
-    addOneToOne(FlatMapNode(parallelism, f))
+  def flatMap[I, O](parallelism: Int, f: (String, I) => Seq[(String, O)]): Graph = {
+    addOneToOne(FlatMapNode[I, O](parallelism, f))
   }
 
-  def filter(parallelism: Int, f: (String, String) => Boolean): Graph = {
-    addOneToOne(FilterNode(parallelism, f))
+  def filter[I](parallelism: Int, f: (String, I) => Boolean): Graph = {
+    addOneToOne(FilterNode[I](parallelism, f))
   }
 
-  def aggregate(parallelism: Int, f: Seq[(String, String)] => (String, String), toAccumulate: Int): Graph = {
-    addOneToOne(AggregateNode(parallelism, f, toAccumulate))
+  def aggregate[I, O](parallelism: Int, f: Seq[(String, I)] => (String, O), toAccumulate: Int): Graph = {
+    addOneToOne(AggregateNode[I, O](parallelism, f, toAccumulate))
   }
 
-  def splitThenMerge(subStreams: Seq[Graph], splitParallelism: Int, mergeParallelism: Int): Graph = {
+  def splitThenMerge[I, O](subStreams: Seq[Graph], splitParallelism: Int, mergeParallelism: Int): Graph = {
     val numOfSplit = subStreams.size
-    val splitNode = SplitNode(splitParallelism, numOfSplit, subStreams)
-    val mergeNode = MergeNode(mergeParallelism, numOfSplit)
+    val splitNode = SplitNode[I](splitParallelism, numOfSplit, subStreams)
+    val mergeNode = MergeNode[O](mergeParallelism, numOfSplit)
 
     subStreams.foreach {
       subStream =>

@@ -58,7 +58,7 @@ class GraphBuilder(graph: Graph)(implicit context: ActorContext) {
     var nodes: Set[ActorRef] = Set()
 
     graph.nodes.foreach {
-      case n: SplitNode =>
+      case n: SplitNode[_] =>
         deployedCounts += n.deployed.size
         nodes = nodes ++ n.deployed
 

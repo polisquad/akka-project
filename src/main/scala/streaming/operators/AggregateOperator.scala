@@ -6,13 +6,13 @@ import streaming.operators.common.State
 import streaming.operators.common.Messages
 import streaming.operators.common.Messages.Tuple
 
-class AggregateOperator(
-  f: Seq[(String, String)] => (String, String),
+class AggregateOperator[I, O](
+  f: Seq[(String, I)] => (String, O),
   downStreams: Vector[ActorRef],
   toAccumulate: Int
-) extends OneToOneOperator(downStreams) {
+) extends OneToOneOperator[I, O](downStreams) {
 
-  var accumulated: Vector[(String, String)] = Vector()
+  var accumulated: Vector[(String, I)] = Vector()
 
   override def snapshot(uuid: String): Unit = {
     log.info(s"Snapshotting ${uuid}...")
@@ -30,11 +30,10 @@ class AggregateOperator(
     log.info(f"Restored accumulated: ${accumulated}")
   }
 
-  override def processTuple(t: Tuple): Unit = {
-    if (accumulated.length < toAccumulate) {
-      // accumulate
-      accumulated = accumulated :+ (t.key, t.value)
-    } else {
+  override def processTuple(t: Tuple[I]): Unit = {
+    accumulated = accumulated :+ (t.key, t.value)
+
+    if (accumulated.length == toAccumulate) {
       // we can now compute the aggregate result and send it downstream
       val aggregateResult = f(accumulated)
       accumulated = Vector()
@@ -55,6 +54,6 @@ class AggregateOperator(
 }
 
 object AggregateOperator {
-  def props(f: Seq[(String, String)] => (String, String), downStreams: Vector[ActorRef], toAccumulate: Int): Props =
+  def props[I, O](f: Seq[(String, I)] => (String, O), downStreams: Vector[ActorRef], toAccumulate: Int): Props =
     Props(new AggregateOperator(f, downStreams, toAccumulate))
 }

@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import streaming.Config
 
-abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with Timers {
+abstract class OneToZeroOperator[I] extends Actor with ActorLogging with Stash with Timers {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _
@@ -45,7 +45,9 @@ abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with
         snapshot(uuid)
       } onComplete {
         case Success(_) => self ! Initialized
-        case Failure(_) => self ! SnapshotFailed
+        case Failure(e) =>
+          log.info(f"Initial snapshot failed: ${e}")
+          self ! SnapshotFailed
       }
 
     case RestoreSnapshot(uuid, upStreams) =>
@@ -55,7 +57,9 @@ abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with
         restoreSnapshot(uuid)
       } onComplete {
         case Success(_) => self ! RestoredSnapshot(uuid)
-        case Failure(_) => self ! RestoreSnapshotFailed
+        case Failure(e) =>
+          log.info(f"Restore snapshot failed: ${e}")
+          self ! RestoreSnapshotFailed
       }
 
     case Initialized =>
@@ -73,10 +77,10 @@ abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with
       throw new Exception("Restore snapshot failed")
   }
 
-  def writeResult(t: Tuple): Unit
+  def writeResult(t: Tuple[I]): Unit
 
   def operative: Receive = {
-    case t: Tuple =>
+    case t: Tuple[I] =>
       if (blockedChannels(sender())) {
         stash()
       } else {
@@ -128,9 +132,6 @@ abstract class OneToZeroOperator extends Actor with ActorLogging with Stash with
         throw new Exception(s"Marker id was not the expected one. Expected $expectedOffset, Received: ${marker.offset}")
       }
   }
-
-
-
 }
 
 

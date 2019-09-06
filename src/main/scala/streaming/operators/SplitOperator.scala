@@ -4,9 +4,9 @@ import akka.actor.{Props, ActorRef}
 import streaming.operators.types.OneToMultiOperator
 import streaming.operators.common.Messages.Tuple
 
-class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends OneToMultiOperator(downStreams) {
+class SplitOperator[I](downStreams: Vector[Vector[ActorRef]]) extends OneToMultiOperator[I](downStreams) {
 
-  def processTuple(t: Tuple): Unit = {
+  def processTuple(t: Tuple[I]): Unit = {
     downStreams.map {
       split =>
         val downStreamOp = t.key.hashCode() % split.size
@@ -25,6 +25,6 @@ class SplitOperator(downStreams: Vector[Vector[ActorRef]]) extends OneToMultiOpe
 }
 
 object SplitOperator {
-  def props(downStreams: Vector[Vector[ActorRef]]): Props =
+  def props[I](downStreams: Vector[Vector[ActorRef]]): Props =
     Props(new SplitOperator(downStreams))
 }

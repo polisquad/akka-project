@@ -4,7 +4,7 @@ import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.AggregateOperator
 
-class AggregateNode(parallelism: Int, f: Seq[(String, String)] => (String, String), toAccumulate: Int) extends OneToOneNode(parallelism) {
+class AggregateNode[I, O](parallelism: Int, f: Seq[(String, I)] => (String, O), toAccumulate: Int) extends OneToOneNode(parallelism) {
 
   override def deploy(downStreams: Vector[ActorRef])(implicit context: ActorContext): Vector[ActorRef] =
     (for (i <- 1 to parallelism)
@@ -13,7 +13,7 @@ class AggregateNode(parallelism: Int, f: Seq[(String, String)] => (String, Strin
 
 object AggregateNode {
 
-  def apply(parallelism: Int, f: Seq[(String, String)] => (String, String), toAccumulate: Int): AggregateNode =
+  def apply[I, O](parallelism: Int, f: Seq[(String, I)] => (String, O), toAccumulate: Int): AggregateNode[I, O] =
     new AggregateNode(parallelism, f, toAccumulate)
 
 }

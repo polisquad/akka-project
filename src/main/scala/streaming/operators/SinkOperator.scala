@@ -7,7 +7,7 @@ import streaming.operators.common.State
 import streaming.operators.common.Messages.Tuple
 
 // Text source operator
-class SinkOperator(sink: String) extends OneToZeroOperator {
+class SinkOperator[I](sink: String) extends OneToZeroOperator[I] {
 
   var resultFile: RandomAccessFile = _
   var filePointer: Long = 0
@@ -31,23 +31,25 @@ class SinkOperator(sink: String) extends OneToZeroOperator {
     log.info(f"Restored file pointer: ${filePointer}")
   }
 
-  override def writeResult(t: Tuple): Unit = {
+  override def writeResult(t: Tuple[I]): Unit = {
     upOffsets = upOffsets.updated(sender(), t.offset + 1)
     writeToFile(t.value)
     log.info(s"Written result: ${t.value}")
   }
 
-  def writeToFile(value: String): Unit = {
+  def writeToFile(value: I): Unit = {
     if (resultFile == null) {
       // There is no result file yet
       resultFile = new RandomAccessFile(sink, "rw")
     }
 
+    val strValue = value.toString()
+
     resultFile.seek(filePointer)
-    resultFile.writeBytes(value)
+    resultFile.writeBytes(strValue)
     resultFile.writeBytes(System.lineSeparator())
 
-    filePointer += value.length + SeparatorLength
+    filePointer += strValue.length() + SeparatorLength
   }
 
 }

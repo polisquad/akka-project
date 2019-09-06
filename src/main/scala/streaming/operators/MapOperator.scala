@@ -4,12 +4,12 @@ import akka.actor.{Props, ActorRef}
 import streaming.operators.common.Messages.Tuple
 import streaming.operators.types.OneToOneOperator
 
-class MapOperator(
-  f: (String, String) => (String, String),
+class MapOperator[I, O](
+  f: (String, I) => (String, O),
   downStreams: Vector[ActorRef]
-) extends OneToOneOperator(downStreams) {
+) extends OneToOneOperator[I, O](downStreams) {
 
-  override def processTuple(t: Tuple) = {
+  override def processTuple(t: Tuple[I]) = {
     val (newKey, newValue) = f(t.key, t.value)
 
     val downStreamOp = downStreams(newKey.hashCode() % downStreams.size)
@@ -27,8 +27,8 @@ class MapOperator(
 
 
 object MapOperator {
-  def props(
-    f: (String, String) => (String, String),
+  def props[I, O](
+    f: (String, I) => (String, O),
     downStreams: Vector[ActorRef],
   ): Props =
     Props(new MapOperator(f, downStreams))

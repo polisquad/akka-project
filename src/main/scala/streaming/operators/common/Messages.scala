@@ -6,7 +6,7 @@ object Messages {
   // TODO place each message where it should belong
   // TODO separate like in graph package when refactoring operators???
 
-  final case class Tuple(key: String, value: String, offset: Long) {
+  final case class Tuple[T](key: String, value: T, offset: Long) {
     override def hashCode(): Int = key.hashCode()
   }
 

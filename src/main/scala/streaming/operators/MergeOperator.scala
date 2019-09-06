@@ -4,9 +4,9 @@ import akka.actor.{Props, ActorRef}
 import streaming.operators.types.MultiToOneOperator
 import streaming.operators.common.Messages.Tuple
 
-class MergeOperator(downStreams: Vector[ActorRef]) extends MultiToOneOperator(downStreams) {
+class MergeOperator[I](downStreams: Vector[ActorRef]) extends MultiToOneOperator[I](downStreams) {
 
-  def processTuple(t: Tuple): Unit = {
+  def processTuple(t: Tuple[I]): Unit = {
     val downStreamOp = downStreams(t.key.hashCode() % downStreams.size)
     val newOffset = downOffsets(downStreamOp)
 
@@ -22,5 +22,5 @@ class MergeOperator(downStreams: Vector[ActorRef]) extends MultiToOneOperator(do
 }
 
 object MergeOperator {
-  def props(downStreams: Vector[ActorRef]): Props = Props(new MergeOperator(downStreams))
+  def props[I](downStreams: Vector[ActorRef]): Props = Props(new MergeOperator(downStreams))
 }
