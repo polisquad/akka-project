@@ -20,7 +20,9 @@ Input data is read by a single source operator and output data is consumed by a 
 ## Graph deploy and supervision
 Each graph has its corresponding Master Node. The Master Node parses the user-defined graph and instantiates all the needed operators. The Master Node is itself an Akka actor which supervises all the actors needed for the operators, as can be seen in the following simpe graph.
 
-<img src="https://i.imgur.com/RW4KmjP.png"/>
+<p align="center">
+  <img width="70%" height="70%" src="https://i.imgur.com/RW4KmjP.png">
+</p>
 
 During the graph execution a consistent global state of the system is taken through a distributed snapshot initiated by the Master Node. An eventual error occurring in one of the operators is propagated, thanks to the Akka hierarchy, to the Master Node, which restores the last valid snapshot.
 For more information regarding fault tolerance see the corresponding section below.
@@ -29,7 +31,9 @@ The Master Node spawns N actors for each operator according the parallelism leve
 
 As an example, the previous graph definition with a parallelism level of 2 for every operator leads to the following graph of actors supervised by the Master Node(which is not reported in this picture)
 
-<img src="https://i.imgur.com/USPLAd0.png"/>
+<p align="center">
+  <img width="70%" height="70%" src="https://i.imgur.com/USPLAd0.png">
+</p>
 
 ## Fault tolerance
 The engine provides end-to-end "exactly once" delivery for each graph even in the presence of failures, assuming that the  graph's Master Node does not fail.
@@ -38,7 +42,7 @@ The engine does this by implementing the synchronous version of
 To guarantee exactly-once delivery both the source and the sink must take part in the snapshot mechanism. Both the source and the sink use text files and they both save, as their state, a file pointer they seek to know where to read/write. This is enough to mock a real-world scenario in which there is, for example, a Kafka source and a Cassandra sink taking part in the checkpointing. The other stateful operator which takes part in the snapshot by saving the accumulated <Key, Value> pairs is the Aggregate operator.
 
 ## Stateful Operators
-As stated, there are three operators with a state: the source, the sink and the aggregate operator. They take part in the checkpointing mechanism by writing their state to disk. Actually, also the other operators takes part in the checkpointing by default basically by saving nothing. Therefore it is easy to modify the existing operators or to create new ones with an application specific state.
+As already mentioned, there are three operators with a state: the source, the sink and the aggregate operator. They take part in the checkpointing mechanism by writing their state to disk. Actually, also the other operators take part in the checkpointing by default even though they don't write anything to disk. Therefore it is easy to modify the existing operators or to create new ones and make them stateful.
 
 
 # Example usage
