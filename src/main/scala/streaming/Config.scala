@@ -26,4 +26,7 @@ object Config {
   // Time after which a marker message is considered lost
   val MarkersTimeout = 5 seconds
 
+  // Key,value separator for the default text source
+  val KeyValueSeparator = ":"
+
 }

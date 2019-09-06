@@ -14,9 +14,7 @@ import streaming.MasterNode
 import scala.concurrent.duration._
 import streaming.Config
 
-abstract class OneToOneOperator[I, O](
-  downStreams: Vector[ActorRef]
-) extends Actor with ActorLogging with Stash with Timers {
+abstract class OneToOneOperator[I, O](downStreams: Vector[ActorRef]) extends Operator {
 
   import context.dispatcher
 

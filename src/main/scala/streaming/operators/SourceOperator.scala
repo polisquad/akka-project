@@ -4,13 +4,11 @@ import java.io.RandomAccessFile
 import streaming.operators.common.State
 import streaming.operators.types.ZeroToOneOperator
 import akka.actor.{Props, ActorRef}
+import streaming.Config
 
 
 // Text source operator
-class SourceOperator (
-  downStreams: Vector[ActorRef],
-  source: String
-) extends ZeroToOneOperator(downStreams) {
+class SourceOperator(downStreams: Vector[ActorRef], source: String) extends ZeroToOneOperator[String](downStreams) {
 
   var data: RandomAccessFile = _
   var offset: Long = 0
@@ -42,7 +40,7 @@ class SourceOperator (
     if (offset < data.length()) {
       data.seek(offset)
       val line = data.readLine()
-      val lineSplit = line.split(",")
+      val lineSplit = line.split(Config.KeyValueSeparator)
 
       offset += line.length + SeparatorLength
 

@@ -4,7 +4,7 @@ import akka.actor.{Props, ActorRef}
 import streaming.operators.types.OneToMultiOperator
 import streaming.operators.common.Messages.Tuple
 
-class SplitOperator[I](downStreams: Vector[Vector[ActorRef]]) extends OneToMultiOperator[I](downStreams) {
+class SplitOperator[I](downStreams: Vector[Vector[ActorRef]]) extends OneToMultiOperator[I, I](downStreams) {
 
   def processTuple(t: Tuple[I]): Unit = {
     downStreams.map {

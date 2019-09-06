@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import streaming.Config
 
-abstract class MultiToOneOperator[I](downStreams: Vector[ActorRef]) extends Actor with ActorLogging with Stash with Timers {
+abstract class MultiToOneOperator[I, O](downStreams: Vector[ActorRef]) extends Operator {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _

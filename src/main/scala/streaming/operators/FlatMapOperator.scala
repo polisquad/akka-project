@@ -4,10 +4,7 @@ import akka.actor.{Props, ActorRef}
 import streaming.operators.types.OneToOneOperator
 import streaming.operators.common.Messages.Tuple
 
-class FlatMapOperator[I, O](
-  f: (String, I) => Seq[(String, O)],
-  downStreams: Vector[ActorRef]
-) extends OneToOneOperator[I, O](downStreams) {
+class FlatMapOperator[I, O](f: (String, I) => Seq[(String, O)], downStreams: Vector[ActorRef]) extends OneToOneOperator[I, O](downStreams) {
 
   override def processTuple(t: Tuple[I]): Unit = {
     val newTuples = f(t.key, t.value)

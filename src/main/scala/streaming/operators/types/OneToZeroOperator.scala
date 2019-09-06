@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import streaming.Config
 
-abstract class OneToZeroOperator[I] extends Actor with ActorLogging with Stash with Timers {
+abstract class OneToZeroOperator[I] extends Operator {
   import context.dispatcher
 
   var upOffsets: Map[ActorRef, Long] = _

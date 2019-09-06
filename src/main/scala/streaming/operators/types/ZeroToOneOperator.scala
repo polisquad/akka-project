@@ -14,9 +14,7 @@ import scala.util.{Failure, Success}
 import streaming.Config
 
 // Represents a generic Source Operator
-abstract class ZeroToOneOperator(
-  downStreams: Vector[ActorRef],
-) extends Actor with ActorLogging with Stash with Timers {
+abstract class ZeroToOneOperator[O](downStreams: Vector[ActorRef]) extends Operator {
   import ZeroToOneOperator._
   import context.dispatcher
 

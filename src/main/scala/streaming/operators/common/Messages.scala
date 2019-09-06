@@ -3,8 +3,7 @@ package streaming.operators.common
 import akka.actor.ActorRef
 
 object Messages {
-  // TODO place each message where it should belong
-  // TODO separate like in graph package when refactoring operators???
+  // TODO These are messages common to different actors, move them or is this ok?
 
   final case class Tuple[T](key: String, value: T, offset: Long) {
     override def hashCode(): Int = key.hashCode()
