@@ -14,22 +14,29 @@ class GraphBuilder(graph: Graph)(implicit context: ActorContext) {
     deployGraph(graphCreator, Restore(uuid))
 
   private def deployGraph(graphCreator: ActorRef, deployMode: DeployMode): GraphInfo = {
-    val source = SourceNode(graph.source)
-    val sink = SinkNode(graph.sink)
+    val source = SourceNode(graph.sourceWithAddress._1, graph.sourceWithAddress._2)
+    val sink = SinkNode(graph.sinkWithAddress._1, graph.sinkWithAddress._2)
 
-    val firstNode = graph.nodes.head
-    val lastNode = graph.nodes.last
+    if (graph.nodes.isEmpty) {
+      // User has defined a graph with just a source and a sink
+      // While technically useless, just make it work
+      sink.prev = source
+    } else {
+      val firstNode = graph.nodes.head
+      val lastNode = graph.nodes.last
 
-    firstNode match {
-      case n: OneToOneNode =>
-        n.prev = source
-      case n: OneToMultiNode =>
-        n.prev = source
-      case _ =>
-        throw new Exception("First node must be a OneToOneNode")
+      firstNode match {
+        case n: OneToOneNode =>
+          n.prev = source
+        case n: OneToMultiNode =>
+          n.prev = source
+        case _ =>
+          throw new Exception("First node must be a OneToOneNode")
+      }
+
+      sink.prev = lastNode
     }
 
-    sink.prev = lastNode
     sink.backWard(Vector())
 
     deployMode match {

@@ -83,7 +83,6 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
 
         if (stopped == 0) {
           // Graph has been stopped, first terminated message
-
           log.info("Didn't receive JobRestarted and the graph already failed")
           timers.cancel(RestoreSnapshotFailureTimer)
         }
@@ -91,7 +90,6 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
         stopped += 1
         if (stopped == children.size()) {
           // All the nodes have been stopped
-
           children.unwatchAll()
           context.become(operative)
           self ! RestoreLastSnapshot
@@ -99,7 +97,10 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
       }
 
     case RestoreSnapshotFailure =>
-      throw new Exception("Unable to restore the snapshot")
+      // If restore snapshot fails, try one more time
+      timers.cancel(RestoreSnapshotFailureTimer)
+      context.become(operative)
+      self ! RestoreLastSnapshot
   }
 
   def operative: Receive = {
@@ -107,7 +108,6 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
       if (children.contains(actor)) { // double-check (using akka's unwatch/watch should be enough)
         if (stopped == 0) {
           // Graph has been stopped, first terminated message
-
           scheduledSnapshot.cancel()
           timers.cancel(SnapshotTimer)
         }
@@ -115,7 +115,6 @@ class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with 
         stopped += 1
         if (stopped == children.size()) {
           // All the nodes have been stopped
-
           children.unwatchAll()
           self ! RestoreLastSnapshot
         }
