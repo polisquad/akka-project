@@ -30,7 +30,7 @@ The Master Node spawns N actors for each operator according to the parallelism l
 As an example, the previous graph definition with a parallelism level of 2 set on every operator leads to the following graph of actors supervised by the Master Node(which is not reported in the picture).
 
 <p align="center">
-  <img width="70%" height="70%" src="https://i.imgur.com/USPLAd0.png">
+  <img width="70%" height="70%" src="https://i.imgur.com/HFfyhBI.png">
 </p>
 
 ## Fault tolerance
