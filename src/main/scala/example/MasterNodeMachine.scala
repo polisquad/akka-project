@@ -1,9 +1,9 @@
-package streaming
+package example
 
 import akka.actor.{ActorRef, ActorSystem}
 import streaming.graph.Graph
+import streaming.MasterNode
 import com.typesafe.config.ConfigFactory
-import scala.util.Random
 
 object MasterNodeMachine {
 
@@ -12,7 +12,6 @@ object MasterNodeMachine {
   }
 
   def someGraph(): Graph = {
-
     val masterNodeMachineAddress = "akka.tcp://MasterNodeMachine@127.0.0.1:7777"
     val workerMachineAddress = "akka.tcp://WorkerMachine@127.0.0.1:2250"
 
@@ -24,25 +23,29 @@ object MasterNodeMachine {
       .createSubGraph()
       .map(parallelism = 2, (key, value: Point) => (key, Point(value.x/2, value.y/2)), workerMachineAddress)
 
-
     Graph
+      // Read from source
       .fromFileSource("./in.txt", masterNodeMachineAddress)
+      // Map source data to Point
       .map(2, (key, value: String) => {
         val dimensions = value.split(",")
         (key, Point(dimensions(0).toFloat, dimensions(1).toFloat))
       }, masterNodeMachineAddress)
+      // Forward the input data to the two subgraphs
       .splitThenMerge(
         Vector(squarePoint, halvePoint),
         splitParallelism = 2, splitAddress = masterNodeMachineAddress,
-        mergeParallelism = 2, mergeAddress = masterNodeMachineAddress)
+        mergeParallelism = 2, mergeAddress = masterNodeMachineAddress
+        )
+      // Write to Sink
       .toSink("./out.txt", masterNodeMachineAddress)
   }
 
   def main(args: Array[String]): Unit = {
-    val config = ConfigFactory.load("master_node_machine.conf")
+    val config = ConfigFactory.load("example/master_node_machine.conf")
     val system = ActorSystem("MasterNodeMachine", config)
 
-    val masterNode: ActorRef = system.actorOf(MasterNode.props(someGraph), "JobMaster")
+    val masterNode: ActorRef = system.actorOf(MasterNode.props(someGraph), "MasterNode")
     masterNode ! MasterNode.CreateTopology
   }
 }
