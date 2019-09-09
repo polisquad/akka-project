@@ -52,7 +52,7 @@ All the stateful operators take part in the checkpointing mechanism and write th
     - `sbt compile`
 - Run the [WorkerMachine](./src/main/scala/example/WorkerMachine.scala)
     - `sbt run` and choose the WorkerMachine executable
-- Run the [MasterNodeMachine](./src/main/scala/example/WorkerMachine.scala)
+- Run the [MasterNodeMachine](./src/main/scala/example/MasterNodeMachine.scala)
     - `sbt run` and choose the MasterNodeMachine executable
 - Check the output in the out.txt
 - Try to kill the WorkerMachine and start it again to see how the system recovers from the failure by restoring the last snapshot
