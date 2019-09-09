@@ -1,6 +1,7 @@
 package streaming.operators.common
 
-import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream, File}
+import java.io._
+
 import streaming.Config
 
 /**

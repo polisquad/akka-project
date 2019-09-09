@@ -1,11 +1,9 @@
 package streaming.graph.nodes
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ActorContext, ActorRef, AddressFromURIString, Deploy}
+import akka.remote.RemoteScope
+import streaming.graph.nodes.types.Node._
 import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.MapOperator
-import streaming.graph.nodes.types.Node._
-import akka.actor.Deploy
-import akka.remote.RemoteScope
-import akka.actor.AddressFromURIString
 
 class MapNode[I,O](parallelism: Int, f: (String, I) => (String, O), address: String) extends OneToOneNode(parallelism) {
 

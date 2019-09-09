@@ -1,10 +1,11 @@
 package streaming.operators
 
-import akka.actor.Props
-import streaming.operators.types.OneToZeroOperator
 import java.io.RandomAccessFile
-import streaming.operators.common.State
+
+import akka.actor.Props
 import streaming.operators.common.Messages.Tuple
+import streaming.operators.common.State
+import streaming.operators.types.OneToZeroOperator
 
 // Text source operator
 class SinkOperator[I](sink: String) extends OneToZeroOperator[I] {

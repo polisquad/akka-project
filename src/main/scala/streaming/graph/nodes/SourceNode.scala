@@ -1,11 +1,9 @@
 package streaming.graph.nodes
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ActorContext, ActorRef, AddressFromURIString, Deploy}
+import akka.remote.RemoteScope
 import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.ZeroToOneNode
 import streaming.operators.SourceOperator
-import akka.actor.Deploy
-import akka.remote.RemoteScope
-import akka.actor.AddressFromURIString
 
 class SourceNode(source: String, address: String) extends ZeroToOneNode(1) {
 

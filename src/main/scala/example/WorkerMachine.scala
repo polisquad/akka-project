@@ -1,7 +1,7 @@
 package example
 
-import com.typesafe.config.ConfigFactory
 import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
 
 object WorkerMachine {
 

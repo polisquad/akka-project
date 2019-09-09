@@ -1,12 +1,10 @@
 package streaming.graph.nodes
-import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.SplitOperator
+import akka.actor.{ActorContext, ActorRef, AddressFromURIString, Deploy}
+import akka.remote.RemoteScope
 import streaming.graph.Graph
 import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToMultiNode
-import akka.actor.Deploy
-import akka.remote.RemoteScope
-import akka.actor.AddressFromURIString
+import streaming.operators.SplitOperator
 
 class SplitNode[I](parallelism: Int, multi: Int, val subStreams: Seq[Graph], address: String) extends OneToMultiNode(parallelism, multi) {
 

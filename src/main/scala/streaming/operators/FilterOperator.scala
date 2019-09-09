@@ -1,8 +1,8 @@
 package streaming.operators
 
-import streaming.operators.types.OneToOneOperator
-import streaming.operators.common.Messages.Tuple
 import akka.actor.{ActorRef, Props}
+import streaming.operators.common.Messages.Tuple
+import streaming.operators.types.OneToOneOperator
 
 class FilterOperator[I](f: (String, I) => Boolean, downStreams: Vector[ActorRef]) extends OneToOneOperator[I, I](downStreams) {
 

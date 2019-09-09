@@ -1,13 +1,11 @@
 package streaming.operators.types
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MasterNode
+import akka.actor.ActorRef
+import streaming.{Config, MasterNode}
 import streaming.operators.common.Messages._
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-import streaming.Config
 
 abstract class OneToMultiOperator[I,O](downStreams: Vector[Vector[ActorRef]]) extends Operator {
   import context.dispatcher

@@ -1,8 +1,8 @@
 package streaming.graph.nodes.types
 
 import akka.actor.{ActorContext, ActorRef}
-import streaming.operators.types.ZeroToOneOperator.InitializeSource
 import streaming.operators.common.Messages.RestoreSnapshot
+import streaming.operators.types.ZeroToOneOperator.InitializeSource
 
 abstract class ZeroToOneNode(parallelism: Int) extends Node(parallelism) {
 

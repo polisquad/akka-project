@@ -1,8 +1,8 @@
 package streaming.operators
 
-import akka.actor.{Props, ActorRef}
-import streaming.operators.types.MultiToOneOperator
+import akka.actor.{ActorRef, Props}
 import streaming.operators.common.Messages.Tuple
+import streaming.operators.types.MultiToOneOperator
 
 class MergeOperator[I](downStreams: Vector[ActorRef]) extends MultiToOneOperator[I, I](downStreams) {
 

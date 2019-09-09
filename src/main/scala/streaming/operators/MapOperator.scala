@@ -1,6 +1,6 @@
 package streaming.operators
 
-import akka.actor.{Props, ActorRef}
+import akka.actor.{ActorRef, Props}
 import streaming.operators.common.Messages.Tuple
 import streaming.operators.types.OneToOneOperator
 

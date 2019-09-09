@@ -1,11 +1,9 @@
 package streaming.graph.nodes
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ActorContext, ActorRef, AddressFromURIString, Deploy}
+import akka.remote.RemoteScope
 import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.FlatMapOperator
-import akka.actor.Deploy
-import akka.remote.RemoteScope
-import akka.actor.AddressFromURIString
 
 class FlatMapNode[I,O](parallelism: Int, f: (String, I) => Seq[(String, O)], address: String) extends OneToOneNode(parallelism) {
 

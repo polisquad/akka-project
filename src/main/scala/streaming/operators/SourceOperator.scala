@@ -1,10 +1,11 @@
 package streaming.operators
 
 import java.io.RandomAccessFile
+
+import akka.actor.{ActorRef, Props}
+import streaming.Config
 import streaming.operators.common.State
 import streaming.operators.types.ZeroToOneOperator
-import akka.actor.{Props, ActorRef}
-import streaming.Config
 
 
 // Text source operator

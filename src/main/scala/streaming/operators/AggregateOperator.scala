@@ -1,10 +1,9 @@
 package streaming.operators
 
-import akka.actor.{Props, ActorRef}
-import streaming.operators.types.OneToOneOperator
-import streaming.operators.common.State
-import streaming.operators.common.Messages
+import akka.actor.{ActorRef, Props}
 import streaming.operators.common.Messages.Tuple
+import streaming.operators.common.State
+import streaming.operators.types.OneToOneOperator
 
 class AggregateOperator[I,O](f: Seq[(String, I)] => (String, O), downStreams: Vector[ActorRef], toAccumulate: Int) extends OneToOneOperator[I,O](downStreams) {
 

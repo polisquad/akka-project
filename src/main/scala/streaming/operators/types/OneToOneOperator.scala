@@ -1,18 +1,11 @@
 package streaming.operators.types
 
 import akka.actor.ActorRef
-import akka.actor.Actor
-import akka.actor.ActorLogging
-import akka.actor.Stash
-import akka.actor.Timers
-import org.scalactic.Bool
-import scala.concurrent.Future
-import scala.util.Success
+import streaming.{Config, MasterNode}
 import streaming.operators.common.Messages._
-import scala.util.Failure
-import streaming.MasterNode
-import scala.concurrent.duration._
-import streaming.Config
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 abstract class OneToOneOperator[I,O](downStreams: Vector[ActorRef]) extends Operator {
 

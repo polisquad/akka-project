@@ -1,11 +1,9 @@
 package streaming.graph.nodes
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ActorContext, ActorRef, AddressFromURIString, Deploy}
+import akka.remote.RemoteScope
 import streaming.graph.nodes.types.MultiToOneNode
 import streaming.graph.nodes.types.Node.generateName
 import streaming.operators.MergeOperator
-import akka.actor.Deploy
-import akka.actor.AddressFromURIString
-import akka.remote.RemoteScope
 
 class MergeNode[I](parallelism: Int, multi: Int, address: String) extends MultiToOneNode(parallelism, multi) {
 

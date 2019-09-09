@@ -1,9 +1,9 @@
 package example
 
 import akka.actor.{ActorRef, ActorSystem}
-import streaming.graph.Graph
-import streaming.MasterNode
 import com.typesafe.config.ConfigFactory
+import streaming.MasterNode
+import streaming.graph.Graph
 
 object MasterNodeMachine {
 

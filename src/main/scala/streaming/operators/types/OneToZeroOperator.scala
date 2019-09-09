@@ -1,17 +1,12 @@
 package streaming.operators.types
 
-import java.io.RandomAccessFile
-
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
-import streaming.MasterNode
+import akka.actor.ActorRef
+import streaming.{Config, MasterNode}
 import streaming.MasterNode.SnapshotDone
 import streaming.operators.common.Messages._
-import streaming.operators.common.State
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-import streaming.Config
 
 abstract class OneToZeroOperator[I] extends Operator {
   import context.dispatcher

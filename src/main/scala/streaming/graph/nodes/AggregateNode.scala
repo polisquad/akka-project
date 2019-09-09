@@ -1,11 +1,9 @@
 package streaming.graph.nodes
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ActorContext, ActorRef, AddressFromURIString, Deploy}
+import akka.remote.RemoteScope
 import streaming.graph.nodes.types.Node.generateName
 import streaming.graph.nodes.types.OneToOneNode
 import streaming.operators.AggregateOperator
-import akka.actor.Deploy
-import akka.remote.RemoteScope
-import akka.actor.AddressFromURIString
 
 class AggregateNode[I,O](parallelism: Int, f: Seq[(String, I)] => (String, O), toAccumulate: Int, address: String) extends OneToOneNode(parallelism) {
 

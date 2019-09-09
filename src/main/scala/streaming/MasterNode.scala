@@ -1,13 +1,11 @@
 package streaming
 
-import akka.actor.SupervisorStrategy.{Stop}
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
-import streaming.operators.common.Messages._
-import streaming.graph.{GraphBuilder, Graph}
-
-import scala.concurrent.duration._
 import java.util.UUID.randomUUID
 
+import akka.actor.SupervisorStrategy.Stop
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, AllForOneStrategy, Cancellable, Props, SupervisorStrategy, Terminated, Timers}
+import streaming.graph.{Graph, GraphBuilder}
+import streaming.operators.common.Messages._
 import streaming.operators.types.ZeroToOneOperator.{RestartJob, StartJob}
 
 class MasterNode(graphBuider: () => Graph) extends Actor with ActorLogging with Timers {

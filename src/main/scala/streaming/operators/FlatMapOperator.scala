@@ -1,8 +1,8 @@
 package streaming.operators
 
-import akka.actor.{Props, ActorRef}
-import streaming.operators.types.OneToOneOperator
+import akka.actor.{ActorRef, Props}
 import streaming.operators.common.Messages.Tuple
+import streaming.operators.types.OneToOneOperator
 
 class FlatMapOperator[I,O](f: (String, I) => Seq[(String, O)], downStreams: Vector[ActorRef]) extends OneToOneOperator[I,O](downStreams) {
 
