@@ -45,4 +45,20 @@ All the stateful operators take part in the checkpointing mechanism and write th
 
 
 # Example usage
-TODO
+
+## Quickstart
+- Clone this repository
+- Inside the cloned directory, compile everything
+    - `sbt compile`
+- Run the [WorkerMachine](./src/main/scala/example/WorkerMachine.scala)
+    - `sbt run` and choose the WorkerMachine executable
+- Run the [MasterNodeMachine](./src/main/scala/example/WorkerMachine.scala)
+    - `sbt run` and choose the MasterNodeMachine executable
+- Check the output in the out.txt
+- Try to kill the WorkerMachine and start it again to see how the system recovers from the failure by restoring the last snapshot
+
+## Further experiments
+- Change the addresses in the [graph definition](./src/main/scala/example/MasterNodeMachine.scala) and in the [configuration files](./src/main/resources/example) to run the quickstart example in your own distributed environment.
+- Change the graph definition by adding the thrown of some exceptions with a given probability in one or more operators and see how the system recovers from the failure.
+- Stream some data to the in.txt by using a script like the [one provided](./example_input/produce.py).
+- Change the configuration parameters in the [Config](./src/main/scala/streaming/Config.scala) file, for example the <Key, Value> separator(default to ":") or the frequency at which a snapshot is initiated.
