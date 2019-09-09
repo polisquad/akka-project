@@ -25,7 +25,7 @@ object MasterNodeMachine {
 
     Graph
       // Read from source
-      .fromFileSource("./in.txt", masterNodeMachineAddress)
+      .fromFileSource("./example_input/in.txt", masterNodeMachineAddress)
       // Map source data to Point
       .map(2, (key, value: String) => {
         val dimensions = value.split(",")
