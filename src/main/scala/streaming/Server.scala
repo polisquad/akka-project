@@ -34,16 +34,14 @@ object Server extends Directives with JsonSupport {
             entity(as[JobDescription]) { job =>
               val jobName = job.name
               val graphPath = job.path
-
-              val graph = readGraph(graphPath)
-              val newMasterNode: ActorRef = system.actorOf(MasterNode.props(() => graph), jobName)
-              val jobDescription = JobDescription(jobName, graphPath)
               val result = jobs.filter(_._1.name == jobName)
+              val jobDescription = JobDescription(jobName, graphPath)
               if (result.isEmpty) {
+                val graph = readGraph(graphPath)
+                val newMasterNode: ActorRef = system.actorOf(MasterNode.props(() => graph), jobName)
                 jobs = jobs.updated(jobDescription, newMasterNode)
                 newMasterNode ! MasterNode.CreateTopology
               } // do not start new job if it already exists
-
               complete(jobDescription)
             }
           } ~
